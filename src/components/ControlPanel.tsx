@@ -264,9 +264,26 @@ export function ControlPanel({
     <aside className="control-panel">
       <div className="panel-top">
         <h1>{text.appTitle}</h1>
-        <button type="button" className="lang-btn" onClick={onToggleLanguage}>
-          {text.languageButton}
-        </button>
+        <div className="top-actions">
+          <a
+            className="home-link-btn"
+            href="https://tingyusdeco.com/"
+            target="_blank"
+            rel="noreferrer noopener"
+            title={text.homeLink}
+            aria-label={text.homeLink}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M3 10.5L12 3l9 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-4.25a.25.25 0 0 1-.25-.25V14a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v6.75a.25.25 0 0 1-.25.25H4.5A1.5 1.5 0 0 1 3 19.5z"
+                fill="currentColor"
+              />
+            </svg>
+          </a>
+          <button type="button" className="lang-btn" onClick={onToggleLanguage}>
+            {text.languageButton}
+          </button>
+        </div>
       </div>
 
       <div className="steps-row" aria-label="workflow">

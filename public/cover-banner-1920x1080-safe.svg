@@ -1,0 +1,68 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="120" y1="60" x2="1780" y2="1020" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8F0F1"/>
+      <stop offset="0.55" stop-color="#EEDFE2"/>
+      <stop offset="1" stop-color="#DEC9CE"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="300" y1="220" x2="1050" y2="820" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF9F9" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#F4E7E9" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#B98A92"/>
+      <stop offset="1" stop-color="#7C5961"/>
+    </linearGradient>
+    <filter id="shadow" x="220" y="170" width="860" height="710" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="14"/>
+      <feGaussianBlur stdDeviation="18"/>
+      <feComposite in2="hardAlpha" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.35 0 0 0 0 0.24 0 0 0 0 0.28 0 0 0 0.2 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape"/>
+    </filter>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <circle cx="1640" cy="200" r="170" fill="#E7D6DA" fill-opacity="0.56"/>
+  <circle cx="220" cy="880" r="200" fill="#E5D2D7" fill-opacity="0.48"/>
+
+  <g filter="url(#shadow)">
+    <rect x="260" y="200" width="780" height="630" rx="36" fill="url(#panel)" stroke="#D8BDC3" stroke-width="2"/>
+  </g>
+
+  <g opacity="0.9">
+    <rect x="330" y="290" width="165" height="165" rx="16" fill="#F2DDE1" stroke="#D4AAB2"/>
+    <rect x="495" y="290" width="165" height="165" rx="16" fill="#EED5DB" stroke="#D4AAB2"/>
+    <rect x="660" y="290" width="165" height="165" rx="16" fill="#E9CFD6" stroke="#D4AAB2"/>
+    <rect x="330" y="455" width="165" height="165" rx="16" fill="#EED5DB" stroke="#D4AAB2"/>
+    <rect x="495" y="455" width="165" height="165" rx="16" fill="#F8EAEC" stroke="#D4AAB2"/>
+    <rect x="660" y="455" width="165" height="165" rx="16" fill="#EED5DB" stroke="#D4AAB2"/>
+  </g>
+
+  <g opacity="0.82">
+    <path d="M380 330L414 364L380 398L346 364L380 330Z" fill="#C5919B"/>
+    <path d="M545 330L579 364L545 398L511 364L545 330Z" fill="#B8848F"/>
+    <path d="M710 330L744 364L710 398L676 364L710 330Z" fill="#AA7782"/>
+    <path d="M380 495L414 529L380 563L346 529L380 495Z" fill="#AA7782"/>
+    <path d="M545 495L579 529L545 563L511 529L545 495Z" fill="#C5919B"/>
+    <path d="M710 495L744 529L710 563L676 529L710 495Z" fill="#B8848F"/>
+  </g>
+
+  <text x="1130" y="430" fill="#3B272E" font-family="Segoe UI, Noto Sans TC, Arial, sans-serif" font-size="68" font-weight="800" letter-spacing="0.6">
+    Seamless Pattern
+  </text>
+  <text x="1130" y="505" fill="url(#accent)" font-family="Segoe UI, Noto Sans TC, Arial, sans-serif" font-size="68" font-weight="800" letter-spacing="0.6">
+    Designer PRO
+  </text>
+  <text x="1132" y="568" fill="#72545D" font-family="Segoe UI, Noto Sans TC, Arial, sans-serif" font-size="28" font-weight="600">
+    Upload · Inspect · Export PNG/PDF
+  </text>
+
+  <rect x="1130" y="614" width="390" height="3" rx="1.5" fill="#C9A2AA"/>
+  <text x="1132" y="664" fill="#7E626A" font-family="Segoe UI, Noto Sans TC, Arial, sans-serif" font-size="22" font-weight="500">
+    Safe Margin Version for Web Covers
+  </text>
+</svg>

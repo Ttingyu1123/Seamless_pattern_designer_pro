@@ -1,0 +1,69 @@
+﻿Seamless Pattern Designer PRO - 使用說明
+
+產品定位
+- 專業 seamless pattern 檢查與輸出工具
+- 完全前端執行（無後端）
+- 適用 Pattern Designer / AI Artist
+
+主要功能
+1) 圖片上傳
+- 支援 PNG/JPG
+- 使用 createImageBitmap 載入
+- 偵測尺寸與 DPI（無 DPI 則預設 300）
+
+2) 拼接檢查
+- 模式：Grid / Half-drop Row / Half-drop Column
+- 可啟用 Mirror（交錯翻轉）
+- 可啟用 Offset Preview（四分位偏移檢查）
+- 右側畫布支援縮放與拖曳平移
+
+3) 接縫偵測
+- Show Seam Heatmap：顯示邊緣差異熱圖
+- Show Problem Seams：只顯示超過門檻的問題接縫
+- Seam Threshold：接縫判定門檻（越低越嚴格）
+
+4) 輸出設定
+- 單位：px / in / cm
+- 可設定輸出寬高、DPI、拼接數
+- 提供常用尺寸：A4 / A5 / 明信片 / 20x20
+- 提供 Auto Upscale 建議，降低列印模糊風險
+
+5) 匯出
+- 匯出 PNG
+- 匯出 PDF（根據尺寸與 DPI 產生頁面）
+- 已做 PDF 抗拼接縫處理
+
+建議操作流程
+1. 上傳 PNG/JPG 圖片
+2. 在「拼接檢查」設定模式與檢查拼接數
+3. 開啟熱圖或問題接縫進行診斷
+4. 在「輸出設定」設定尺寸、DPI、輸出拼接數
+5. 先按「預覽輸出」確認密度
+6. 匯出 PNG 或 PDF
+
+快捷鍵
+- P：預覽輸出
+- E：匯出 PNG
+- R：重設視圖
+
+檔名規則（PNG/PDF 共用）
+seamless-pattern_{width}x{height}px_{dpi}dpi_{YYYYMMDD-HHMMSS}.{ext}
+
+範例
+- seamless-pattern_2480x3508px_300dpi_20260207-161530.png
+- seamless-pattern_2480x3508px_300dpi_20260207-161530.pdf
+
+啟動方式
+1) 安裝
+npm install
+
+2) 開發
+npm run dev
+預設網址 http://localhost:5173/
+
+3) 指定 5174
+npm run dev -- --port 5174
+
+4) 打包
+npm run build
+npm run preview

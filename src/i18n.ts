@@ -4,6 +4,7 @@ export const uiText = {
   zh: {
     appTitle: '無縫圖案檢查器 PRO',
     languageButton: 'English',
+    homeLink: '回到官網',
     stepUpload: '步驟 1 上傳',
     stepInspect: '步驟 2 檢查',
     stepExport: '步驟 3 輸出',
@@ -105,6 +106,7 @@ export const uiText = {
   en: {
     appTitle: 'Seamless Pattern Designer PRO',
     languageButton: '中文',
+    homeLink: 'Back to Site',
     stepUpload: 'Step 1 Upload',
     stepInspect: 'Step 2 Inspect',
     stepExport: 'Step 3 Export',
