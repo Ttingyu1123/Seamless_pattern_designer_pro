@@ -374,6 +374,7 @@ button:disabled {
 }
 
 .usage-hint,
+.inspect-help-hint,
 .shortcut-hint {
   position: absolute;
   right: 12px;
@@ -388,6 +389,7 @@ button:disabled {
 }
 
 .usage-hint h3,
+.inspect-help-hint h3,
 .shortcut-hint h3 {
   margin: 0 0 6px;
   font-size: 0.86rem;
@@ -395,6 +397,7 @@ button:disabled {
 }
 
 .usage-hint p,
+.inspect-help-hint p,
 .shortcut-hint p {
   margin: 0 0 4px;
   font-size: 0.78rem;
@@ -403,6 +406,7 @@ button:disabled {
 }
 
 .usage-hint p:last-child,
+.inspect-help-hint p:last-child,
 .shortcut-hint p:last-child {
   margin-bottom: 0;
 }
@@ -413,6 +417,10 @@ button:disabled {
 
 .shortcut-hint {
   bottom: 12px;
+}
+
+.inspect-help-hint {
+  top: 148px;
 }
 
 .heatmap-overlay {
@@ -486,6 +494,7 @@ button:disabled {
   }
 
   .usage-hint,
+  .inspect-help-hint,
   .shortcut-hint {
     right: 10px;
     width: 230px;

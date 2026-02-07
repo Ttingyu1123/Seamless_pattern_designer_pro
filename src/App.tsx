@@ -351,6 +351,17 @@ function App() {
           <p>{text.guide4}</p>
         </aside>
 
+        <aside className="inspect-help-hint" aria-label={text.inspectHelpTitle}>
+          <h3>{text.inspectHelpTitle}</h3>
+          <p>{text.inspectHelpGrid}</p>
+          <p>{text.inspectHelpMirror}</p>
+          <p>{text.inspectHelpHeatmap}</p>
+          <p>{text.inspectHelpProblem}</p>
+          <p>{text.inspectHelpThreshold}</p>
+          <p>{text.inspectHelpOffset}</p>
+          <p>{text.inspectHelpReset}</p>
+        </aside>
+
         <aside className="shortcut-hint" aria-label={text.shortcutsTitle}>
           <h3>{text.shortcutsTitle}</h3>
           <p>{text.shortcutPreview}</p>
