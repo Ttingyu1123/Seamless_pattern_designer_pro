@@ -20,23 +20,17 @@ import {
   type RepeatMode,
 } from '../utils/tilingEngine'
 import { uiText, type UILang } from '../i18n'
-
-interface Viewport {
-  scale: number
-  offsetX: number
-  offsetY: number
-}
+import {
+  useGestureHandlers,
+  getViewportAnchor,
+  clampZoom,
+  type Viewport,
+} from './useGestureHandlers'
+import { renderExportCanvas, safeExportSize } from '../utils/exportRenderer'
 
 interface CanvasSize {
   width: number
   height: number
-}
-
-interface ViewportAnchor {
-  centerX: number
-  centerY: number
-  fitWidth: number
-  fitHeight: number
 }
 
 interface UseCanvasEngineInput {
@@ -65,11 +59,6 @@ interface UseCanvasEngineInput {
   }
 }
 
-interface PointerState {
-  x: number
-  y: number
-}
-
 interface UseCanvasEngineResult {
   containerRef: RefObject<HTMLDivElement | null>
   canvasRef: RefObject<HTMLCanvasElement | null>
@@ -87,11 +76,6 @@ interface UseCanvasEngineResult {
     onWheel: WheelEventHandler<HTMLCanvasElement>
   }
 }
-
-const MIN_ZOOM = 0.1
-const MAX_ZOOM = 8
-const MAX_EXPORT_EDGE = 8192
-const MAX_EXPORT_AREA = 67_108_864
 
 function formatTimestamp(date = new Date()): string {
   const y = date.getFullYear()
@@ -111,47 +95,6 @@ function buildExportFilename(
 ): string {
   const stamp = formatTimestamp()
   return `seamless-pattern_${widthPx}x${heightPx}px_${dpi}dpi_${stamp}.${ext}`
-}
-
-function clampZoom(value: number): number {
-  return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value))
-}
-
-function distance(a: PointerState, b: PointerState): number {
-  const dx = a.x - b.x
-  const dy = a.y - b.y
-  return Math.sqrt(dx * dx + dy * dy)
-}
-
-function midpoint(a: PointerState, b: PointerState): PointerState {
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
-}
-
-function safeExportSize(width: number, height: number): { width: number; height: number; scaled: boolean } {
-  const edgeScale = Math.min(1, MAX_EXPORT_EDGE / Math.max(width, height))
-  const areaScale = Math.min(1, Math.sqrt(MAX_EXPORT_AREA / Math.max(1, width * height)))
-  const scale = Math.min(edgeScale, areaScale)
-
-  if (scale >= 1) {
-    return { width, height, scaled: false }
-  }
-
-  return {
-    width: Math.max(1, Math.floor(width * scale)),
-    height: Math.max(1, Math.floor(height * scale)),
-    scaled: true,
-  }
-}
-
-function getViewportAnchor(canvasSize: CanvasSize): ViewportAnchor {
-  const reserveRight = canvasSize.width > 1100 ? 300 : 0
-  const fitWidth = Math.max(1, canvasSize.width - reserveRight)
-  return {
-    centerX: fitWidth / 2,
-    centerY: canvasSize.height / 2,
-    fitWidth,
-    fitHeight: canvasSize.height,
-  }
 }
 
 export function useCanvasEngine({
@@ -179,14 +122,7 @@ export function useCanvasEngine({
   const [canvasSize, setCanvasSize] = useState<CanvasSize>({ width: 1, height: 1 })
   const [viewport, setViewport] = useState<Viewport>({ scale: 1, offsetX: 0, offsetY: 0 })
 
-  const pointersRef = useRef<Map<number, PointerState>>(new Map())
-  const panRef = useRef<{ id: number; lastX: number; lastY: number } | null>(null)
-  const pinchRef = useRef<{
-    startDistance: number
-    startScale: number
-    worldX: number
-    worldY: number
-  } | null>(null)
+  const { handlers, zoomAt } = useGestureHandlers(canvasRef, canvasSize, viewport, setViewport)
 
   const previewBaseTileCanvas = useMemo(() => {
     if (!previewImage) return null
@@ -255,57 +191,34 @@ export function useCanvasEngine({
     )
 
     setViewport({ scale: clampZoom(fitScale || 1), offsetX: 0, offsetY: 0 })
-  }, [canvasSize.height, canvasSize.width, drawTileCanvas, tileCountX, tileCountY])
+  }, [canvasSize, drawTileCanvas, tileCountX, tileCountY])
 
-  useEffect(() => {
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useLayoutEffect(() => {
     fitView()
   }, [fitView, previewImage])
-
-  const zoomAt = useCallback(
-    (targetScale: number, pointX: number, pointY: number) => {
-      setViewport((prev) => {
-        const newScale = clampZoom(targetScale)
-        const anchor = getViewportAnchor(canvasSize)
-        const centerX = anchor.centerX
-        const centerY = anchor.centerY
-        const worldX = (pointX - centerX - prev.offsetX) / prev.scale
-        const worldY = (pointY - centerY - prev.offsetY) / prev.scale
-
-        return {
-          scale: newScale,
-          offsetX: pointX - centerX - worldX * newScale,
-          offsetY: pointY - centerY - worldY * newScale,
-        }
-      })
-    },
-    [canvasSize.height, canvasSize.width],
-  )
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const setZoom = useCallback(
     (value: number) => {
       const anchor = getViewportAnchor(canvasSize)
       zoomAt(value, anchor.centerX, anchor.centerY)
     },
-    [canvasSize.height, canvasSize.width, zoomAt],
+    [canvasSize, zoomAt],
   )
 
   const resetView = useCallback(() => {
     fitView()
   }, [fitView])
 
-  const exportPNG = useCallback(() => {
-    if (!drawExportTileCanvas && !drawTileCanvas) return
-
-    const seamThreshold = (Math.max(0, Math.min(100, seamThresholdPercent)) / 100) * 765
-    const verticalSeamIssue = (seamAnalysis?.avgLeftRight ?? 0) >= seamThreshold
-    const horizontalSeamIssue = (seamAnalysis?.avgTopBottom ?? 0) >= seamThreshold
+  const resolveExportTile = useCallback(() => {
+    if (!drawExportTileCanvas && !drawTileCanvas) return null
 
     const requestedBaseWidth = Math.max(1, Math.round(exportTarget.widthPx))
     const requestedBaseHeight = Math.max(1, Math.round(exportTarget.heightPx))
     const upscale = Math.max(1, exportTarget.upscale)
     const requestedWidth = Math.max(1, Math.round(requestedBaseWidth * upscale))
     const requestedHeight = Math.max(1, Math.round(requestedBaseHeight * upscale))
-    const target = safeExportSize(requestedWidth, requestedHeight)
 
     const tileRenderWidth = requestedWidth / Math.max(1, exportTarget.tilesX)
     const tileRenderHeight = requestedHeight / Math.max(1, exportTarget.tilesY)
@@ -317,109 +230,34 @@ export function useCanvasEngine({
       tileRenderWidth <= (previewTile?.width ?? 0) &&
       tileRenderHeight <= (previewTile?.height ?? 0)
     const exportTile = previewCanFit ? previewTile : sourceTile ?? previewTile
+    if (!exportTile) return null
 
-    if (!exportTile) return
+    return { exportTile, requestedBaseWidth, requestedBaseHeight, requestedWidth, requestedHeight }
+  }, [drawExportTileCanvas, drawTileCanvas, exportTarget])
 
-    const exportCanvas = document.createElement('canvas')
-    exportCanvas.width = target.width
-    exportCanvas.height = target.height
-    const exportCtx = exportCanvas.getContext('2d')
+  const exportPNG = useCallback(() => {
+    const resolved = resolveExportTile()
+    if (!resolved) return
 
-    if (!exportCtx) return
+    const { exportTile, requestedBaseWidth, requestedBaseHeight, requestedWidth, requestedHeight } = resolved
+    const target = safeExportSize(requestedWidth, requestedHeight)
 
-    exportCtx.imageSmoothingEnabled = true
-    const scaleX = target.width / requestedWidth
-    const scaleY = target.height / requestedHeight
-    exportCtx.scale(scaleX, scaleY)
+    const exportCanvas = renderExportCanvas(exportTile, {
+      requestedWidth,
+      requestedHeight,
+      tilesX: exportTarget.tilesX,
+      tilesY: exportTarget.tilesY,
+      repeatMode,
+      shiftPercent,
+      mirrorEnabled,
+      showGrid,
+      showHeatmap,
+      showProblemSeams,
+      seamAnalysis,
+      seamThresholdPercent,
+    })
 
-    const rowCount = Math.ceil(requestedHeight / tileRenderHeight) + 4
-    const colCount = Math.ceil(requestedWidth / tileRenderWidth) + 4
-    const rowStart = -2
-    const colStart = -2
-
-    const overlap = 0.7
-    for (let row = rowStart; row < rowStart + rowCount; row += 1) {
-      for (let col = colStart; col < colStart + colCount; col += 1) {
-        const baseX = col * tileRenderWidth
-        const baseY = row * tileRenderHeight
-        const offset = getTileOffset({
-          row,
-          col,
-          repeatMode,
-          shiftPercent,
-          tileWidth: tileRenderWidth,
-          tileHeight: tileRenderHeight,
-        })
-
-        const x = baseX + offset.offsetX
-        const y = baseY + offset.offsetY
-
-        if (x > requestedWidth || y > requestedHeight || x + tileRenderWidth < 0 || y + tileRenderHeight < 0) {
-          continue
-        }
-
-        const mirrored = shouldMirrorTile(row, col, mirrorEnabled)
-        if (mirrored) {
-          exportCtx.save()
-          exportCtx.translate(x + tileRenderWidth / 2, y + tileRenderHeight / 2)
-          exportCtx.scale(-1, -1)
-          exportCtx.drawImage(
-            exportTile,
-            -tileRenderWidth / 2 - overlap / 2,
-            -tileRenderHeight / 2 - overlap / 2,
-            tileRenderWidth + overlap,
-            tileRenderHeight + overlap,
-          )
-          if (showHeatmap && seamAnalysis) {
-            exportCtx.globalCompositeOperation = 'lighter'
-            exportCtx.drawImage(
-              seamAnalysis.heatmap,
-              -tileRenderWidth / 2,
-              -tileRenderHeight / 2,
-              tileRenderWidth,
-              tileRenderHeight,
-            )
-            exportCtx.globalCompositeOperation = 'source-over'
-          }
-          exportCtx.restore()
-        } else {
-          exportCtx.drawImage(
-            exportTile,
-            x - overlap / 2,
-            y - overlap / 2,
-            tileRenderWidth + overlap,
-            tileRenderHeight + overlap,
-          )
-          if (showHeatmap && seamAnalysis) {
-            exportCtx.save()
-            exportCtx.globalCompositeOperation = 'lighter'
-            exportCtx.drawImage(seamAnalysis.heatmap, x, y, tileRenderWidth, tileRenderHeight)
-            exportCtx.restore()
-          }
-        }
-
-        if (showProblemSeams) {
-          exportCtx.strokeStyle = 'rgba(10, 21, 25, 0.92)'
-          exportCtx.lineWidth = 1.5
-          exportCtx.beginPath()
-          if (verticalSeamIssue) {
-            exportCtx.moveTo(x + tileRenderWidth, y)
-            exportCtx.lineTo(x + tileRenderWidth, y + tileRenderHeight)
-          }
-          if (horizontalSeamIssue) {
-            exportCtx.moveTo(x, y + tileRenderHeight)
-            exportCtx.lineTo(x + tileRenderWidth, y + tileRenderHeight)
-          }
-          exportCtx.stroke()
-        }
-
-        if (showGrid) {
-          exportCtx.strokeStyle = 'rgba(255,255,255,0.34)'
-          exportCtx.lineWidth = 1
-          exportCtx.strokeRect(x, y, tileRenderWidth, tileRenderHeight)
-        }
-      }
-    }
+    if (!exportCanvas) return
 
     exportCanvas.toBlob((blob) => {
       if (!blob) {
@@ -441,14 +279,8 @@ export function useCanvasEngine({
       }
     }, 'image/png')
   }, [
-    drawTileCanvas,
-    drawExportTileCanvas,
-    exportTarget.heightPx,
-    exportTarget.dpi,
-    exportTarget.tilesX,
-    exportTarget.tilesY,
-    exportTarget.upscale,
-    exportTarget.widthPx,
+    resolveExportTile,
+    exportTarget,
     mirrorEnabled,
     repeatMode,
     seamAnalysis,
@@ -461,130 +293,28 @@ export function useCanvasEngine({
   ])
 
   const exportPDF = useCallback(() => {
-    if (!drawExportTileCanvas && !drawTileCanvas) return
+    const resolved = resolveExportTile()
+    if (!resolved) return
 
-    const seamThreshold = (Math.max(0, Math.min(100, seamThresholdPercent)) / 100) * 765
-    const verticalSeamIssue = (seamAnalysis?.avgLeftRight ?? 0) >= seamThreshold
-    const horizontalSeamIssue = (seamAnalysis?.avgTopBottom ?? 0) >= seamThreshold
-
-    const requestedBaseWidth = Math.max(1, Math.round(exportTarget.widthPx))
-    const requestedBaseHeight = Math.max(1, Math.round(exportTarget.heightPx))
-    const upscale = Math.max(1, exportTarget.upscale)
-    const requestedWidth = Math.max(1, Math.round(requestedBaseWidth * upscale))
-    const requestedHeight = Math.max(1, Math.round(requestedBaseHeight * upscale))
+    const { exportTile, requestedBaseWidth, requestedBaseHeight, requestedWidth, requestedHeight } = resolved
     const target = safeExportSize(requestedWidth, requestedHeight)
 
-    const tileRenderWidth = requestedWidth / Math.max(1, exportTarget.tilesX)
-    const tileRenderHeight = requestedHeight / Math.max(1, exportTarget.tilesY)
+    const exportCanvas = renderExportCanvas(exportTile, {
+      requestedWidth,
+      requestedHeight,
+      tilesX: exportTarget.tilesX,
+      tilesY: exportTarget.tilesY,
+      repeatMode,
+      shiftPercent,
+      mirrorEnabled,
+      showGrid,
+      showHeatmap,
+      showProblemSeams,
+      seamAnalysis,
+      seamThresholdPercent,
+    })
 
-    const sourceTile = drawExportTileCanvas
-    const previewTile = drawTileCanvas
-    const previewCanFit =
-      Boolean(previewTile) &&
-      tileRenderWidth <= (previewTile?.width ?? 0) &&
-      tileRenderHeight <= (previewTile?.height ?? 0)
-    const exportTile = previewCanFit ? previewTile : sourceTile ?? previewTile
-    if (!exportTile) return
-
-    const exportCanvas = document.createElement('canvas')
-    exportCanvas.width = target.width
-    exportCanvas.height = target.height
-    const exportCtx = exportCanvas.getContext('2d')
-    if (!exportCtx) return
-
-    exportCtx.imageSmoothingEnabled = true
-    const scaleX = target.width / requestedWidth
-    const scaleY = target.height / requestedHeight
-    exportCtx.scale(scaleX, scaleY)
-
-    const rowCount = Math.ceil(requestedHeight / tileRenderHeight) + 4
-    const colCount = Math.ceil(requestedWidth / tileRenderWidth) + 4
-    const rowStart = -2
-    const colStart = -2
-
-    const overlap = 0.7
-    for (let row = rowStart; row < rowStart + rowCount; row += 1) {
-      for (let col = colStart; col < colStart + colCount; col += 1) {
-        const baseX = col * tileRenderWidth
-        const baseY = row * tileRenderHeight
-        const offset = getTileOffset({
-          row,
-          col,
-          repeatMode,
-          shiftPercent,
-          tileWidth: tileRenderWidth,
-          tileHeight: tileRenderHeight,
-        })
-
-        const x = baseX + offset.offsetX
-        const y = baseY + offset.offsetY
-
-        if (x > requestedWidth || y > requestedHeight || x + tileRenderWidth < 0 || y + tileRenderHeight < 0) {
-          continue
-        }
-
-        const mirrored = shouldMirrorTile(row, col, mirrorEnabled)
-        if (mirrored) {
-          exportCtx.save()
-          exportCtx.translate(x + tileRenderWidth / 2, y + tileRenderHeight / 2)
-          exportCtx.scale(-1, -1)
-          exportCtx.drawImage(
-            exportTile,
-            -tileRenderWidth / 2 - overlap / 2,
-            -tileRenderHeight / 2 - overlap / 2,
-            tileRenderWidth + overlap,
-            tileRenderHeight + overlap,
-          )
-          if (showHeatmap && seamAnalysis) {
-            exportCtx.globalCompositeOperation = 'lighter'
-            exportCtx.drawImage(
-              seamAnalysis.heatmap,
-              -tileRenderWidth / 2,
-              -tileRenderHeight / 2,
-              tileRenderWidth,
-              tileRenderHeight,
-            )
-            exportCtx.globalCompositeOperation = 'source-over'
-          }
-          exportCtx.restore()
-        } else {
-          exportCtx.drawImage(
-            exportTile,
-            x - overlap / 2,
-            y - overlap / 2,
-            tileRenderWidth + overlap,
-            tileRenderHeight + overlap,
-          )
-          if (showHeatmap && seamAnalysis) {
-            exportCtx.save()
-            exportCtx.globalCompositeOperation = 'lighter'
-            exportCtx.drawImage(seamAnalysis.heatmap, x, y, tileRenderWidth, tileRenderHeight)
-            exportCtx.restore()
-          }
-        }
-
-        if (showProblemSeams) {
-          exportCtx.strokeStyle = 'rgba(10, 21, 25, 0.92)'
-          exportCtx.lineWidth = 1.5
-          exportCtx.beginPath()
-          if (verticalSeamIssue) {
-            exportCtx.moveTo(x + tileRenderWidth, y)
-            exportCtx.lineTo(x + tileRenderWidth, y + tileRenderHeight)
-          }
-          if (horizontalSeamIssue) {
-            exportCtx.moveTo(x, y + tileRenderHeight)
-            exportCtx.lineTo(x + tileRenderWidth, y + tileRenderHeight)
-          }
-          exportCtx.stroke()
-        }
-
-        if (showGrid) {
-          exportCtx.strokeStyle = 'rgba(255,255,255,0.34)'
-          exportCtx.lineWidth = 1
-          exportCtx.strokeRect(x, y, tileRenderWidth, tileRenderHeight)
-        }
-      }
-    }
+    if (!exportCanvas) return
 
     try {
       const pageWidthIn = requestedWidth / Math.max(1, exportTarget.dpi)
@@ -608,14 +338,8 @@ export function useCanvasEngine({
       window.alert(text.exportFail(target.width, target.height))
     }
   }, [
-    drawExportTileCanvas,
-    drawTileCanvas,
-    exportTarget.heightPx,
-    exportTarget.dpi,
-    exportTarget.tilesX,
-    exportTarget.tilesY,
-    exportTarget.upscale,
-    exportTarget.widthPx,
+    resolveExportTile,
+    exportTarget,
     mirrorEnabled,
     repeatMode,
     seamAnalysis,
@@ -627,6 +351,7 @@ export function useCanvasEngine({
     text,
   ])
 
+  // --- Canvas preview rendering ---
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -752,8 +477,7 @@ export function useCanvasEngine({
     frame = requestAnimationFrame(render)
     return () => cancelAnimationFrame(frame)
   }, [
-    canvasSize.height,
-    canvasSize.width,
+    canvasSize,
     drawTileCanvas,
     mirrorEnabled,
     repeatMode,
@@ -769,113 +493,6 @@ export function useCanvasEngine({
     viewport,
   ])
 
-  const clearPointer = useCallback((pointerId: number) => {
-    pointersRef.current.delete(pointerId)
-    if (panRef.current?.id === pointerId) {
-      panRef.current = null
-    }
-
-    if (pointersRef.current.size < 2) {
-      pinchRef.current = null
-    }
-  }, [])
-
-  const onPointerDown = useCallback<PointerEventHandler<HTMLCanvasElement>>(
-    (event) => {
-      const canvas = canvasRef.current
-      if (!canvas) return
-
-      canvas.setPointerCapture(event.pointerId)
-      pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
-
-      if (pointersRef.current.size === 1) {
-        panRef.current = { id: event.pointerId, lastX: event.clientX, lastY: event.clientY }
-      }
-
-      if (pointersRef.current.size === 2) {
-        const [a, b] = Array.from(pointersRef.current.values())
-        const mid = midpoint(a, b)
-        const startDistance = Math.max(1, distance(a, b))
-        const anchor = getViewportAnchor(canvasSize)
-        const centerX = anchor.centerX
-        const centerY = anchor.centerY
-
-        pinchRef.current = {
-          startDistance,
-          startScale: viewport.scale,
-          worldX: (mid.x - centerX - viewport.offsetX) / viewport.scale,
-          worldY: (mid.y - centerY - viewport.offsetY) / viewport.scale,
-        }
-
-        panRef.current = null
-      }
-    },
-    [canvasSize.height, canvasSize.width, viewport.offsetX, viewport.offsetY, viewport.scale],
-  )
-
-  const onPointerMove = useCallback<PointerEventHandler<HTMLCanvasElement>>(
-    (event) => {
-      if (!pointersRef.current.has(event.pointerId)) return
-
-      pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
-
-      if (pointersRef.current.size === 2 && pinchRef.current) {
-        const [a, b] = Array.from(pointersRef.current.values())
-        const mid = midpoint(a, b)
-        const ratio = distance(a, b) / pinchRef.current.startDistance
-        const nextScale = clampZoom(pinchRef.current.startScale * ratio)
-        const anchor = getViewportAnchor(canvasSize)
-        const centerX = anchor.centerX
-        const centerY = anchor.centerY
-
-        setViewport((prev) => ({
-          ...prev,
-          scale: nextScale,
-          offsetX: mid.x - centerX - pinchRef.current!.worldX * nextScale,
-          offsetY: mid.y - centerY - pinchRef.current!.worldY * nextScale,
-        }))
-        return
-      }
-
-      if (pointersRef.current.size === 1 && panRef.current?.id === event.pointerId) {
-        const dx = event.clientX - panRef.current.lastX
-        const dy = event.clientY - panRef.current.lastY
-        panRef.current.lastX = event.clientX
-        panRef.current.lastY = event.clientY
-
-        setViewport((prev) => ({ ...prev, offsetX: prev.offsetX + dx, offsetY: prev.offsetY + dy }))
-      }
-    },
-    [canvasSize.height, canvasSize.width],
-  )
-
-  const onPointerUp = useCallback<PointerEventHandler<HTMLCanvasElement>>(
-    (event) => {
-      clearPointer(event.pointerId)
-    },
-    [clearPointer],
-  )
-
-  const onPointerCancel = useCallback<PointerEventHandler<HTMLCanvasElement>>(
-    (event) => {
-      clearPointer(event.pointerId)
-    },
-    [clearPointer],
-  )
-
-  const onWheel = useCallback<WheelEventHandler<HTMLCanvasElement>>(
-    (event) => {
-      event.preventDefault()
-      event.stopPropagation()
-      const rect = event.currentTarget.getBoundingClientRect()
-      const x = event.clientX - rect.left
-      const y = event.clientY - rect.top
-      const factor = event.deltaY < 0 ? 1.08 : 0.92
-      zoomAt(viewport.scale * factor, x, y)
-    },
-    [viewport.scale, zoomAt],
-  )
-
   return {
     containerRef,
     canvasRef,
@@ -885,12 +502,6 @@ export function useCanvasEngine({
     exportPNG,
     exportPDF,
     seamAnalysis,
-    handlers: {
-      onPointerDown,
-      onPointerMove,
-      onPointerUp,
-      onPointerCancel,
-      onWheel,
-    },
+    handlers,
   }
 }

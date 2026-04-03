@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+﻿import { memo, useEffect, useMemo, useState } from 'react'
 import { uiText, type UILang } from '../i18n'
 import type { RepeatBaseSize, RepeatMode } from '../utils/tilingEngine'
 
@@ -151,7 +151,7 @@ interface ControlPanelProps {
   onExportPdf: () => void
 }
 
-export function ControlPanel({
+export const ControlPanel = memo(function ControlPanel({
   lang,
   onToggleLanguage,
   repeatMode,
@@ -216,22 +216,25 @@ export function ControlPanel({
   onExportPdf,
 }: ControlPanelProps) {
   const text = uiText[lang]
-  const [inspectionOpen, setInspectionOpen] = useState(true)
-  const [outputOpen, setOutputOpen] = useState(true)
-  const [mobileTab, setMobileTab] = useState<TabMode>('inspection')
-  const [previewToast, setPreviewToast] = useState(false)
 
-  useEffect(() => {
+  const savedPanelState = useMemo(() => {
     try {
       const raw = window.localStorage.getItem('seamless-ui-panel-state')
-      if (!raw) return
-      const parsed = JSON.parse(raw) as { inspectionOpen?: boolean; outputOpen?: boolean }
-      if (typeof parsed.inspectionOpen === 'boolean') setInspectionOpen(parsed.inspectionOpen)
-      if (typeof parsed.outputOpen === 'boolean') setOutputOpen(parsed.outputOpen)
+      if (!raw) return null
+      return JSON.parse(raw) as { inspectionOpen?: boolean; outputOpen?: boolean }
     } catch {
-      // ignore malformed local storage
+      return null
     }
   }, [])
+
+  const [inspectionOpen, setInspectionOpen] = useState(
+    () => savedPanelState?.inspectionOpen ?? true,
+  )
+  const [outputOpen, setOutputOpen] = useState(
+    () => savedPanelState?.outputOpen ?? true,
+  )
+  const [mobileTab, setMobileTab] = useState<TabMode>('inspection')
+  const [previewToast, setPreviewToast] = useState(false)
 
   useEffect(() => {
     try {
@@ -680,4 +683,4 @@ export function ControlPanel({
       {previewToast ? <div className="toast">{text.previewApplied}</div> : null}
     </aside>
   )
-}
+})

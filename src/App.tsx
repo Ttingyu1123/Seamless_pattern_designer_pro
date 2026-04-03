@@ -7,12 +7,11 @@ import { useCanvasEngine } from './hooks/useCanvasEngine'
 import { convertToPixels, readImageMetadata } from './utils/imageMetadata'
 import { uiText, type UILang } from './i18n'
 import type { RepeatMode } from './utils/tilingEngine'
+import { MAX_EXPORT_EDGE, MAX_EXPORT_AREA, MAX_UPLOAD_SIZE_MB, ACCEPTED_IMAGE_TYPES } from './utils/constants'
 
 type BasePreset = '1x1' | '1x2' | '2x1' | 'custom'
 type ExportUnit = 'px' | 'in' | 'cm'
 type ExportPreset = 'a4' | 'a5' | 'postcard' | 'square20'
-const MAX_EXPORT_EDGE = 8192
-const MAX_EXPORT_AREA = 67_108_864
 
 function App() {
   const [lang, setLang] = useState<UILang>('zh')
@@ -151,52 +150,67 @@ function App() {
   })
 
   const handleUpload = async (file: File) => {
-    const metadata = await readImageMetadata(file)
-    const bitmap = await createImageBitmap(file)
-
-    const maxPreviewEdge = 2048
-    const scale = Math.min(1, maxPreviewEdge / Math.max(bitmap.width, bitmap.height))
-    const previewW = Math.max(1, Math.round(bitmap.width * scale))
-    const previewH = Math.max(1, Math.round(bitmap.height * scale))
-    const previewCanvas = document.createElement('canvas')
-    previewCanvas.width = previewW
-    previewCanvas.height = previewH
-    const previewCtx = previewCanvas.getContext('2d')
-    if (previewCtx) {
-      previewCtx.imageSmoothingEnabled = true
-      previewCtx.drawImage(bitmap, 0, 0, previewW, previewH)
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type as typeof ACCEPTED_IMAGE_TYPES[number])) {
+      window.alert(text.uploadError)
+      return
     }
-    const preview = await createImageBitmap(previewCanvas)
+    if (file.size > MAX_UPLOAD_SIZE_MB * 1024 * 1024) {
+      window.alert(text.uploadTooLarge)
+      return
+    }
 
-    setSourceImage((prev) => {
-      prev?.close()
-      return bitmap
-    })
-    setPreviewImage((prev) => {
-      prev?.close()
-      return preview
-    })
-    setPreviewScale(scale)
-    setCustomBaseWidth(bitmap.width)
-    setCustomBaseHeight(bitmap.height)
+    let bitmap: ImageBitmap | null = null
+    try {
+      const metadata = await readImageMetadata(file)
+      bitmap = await createImageBitmap(file)
 
-    const detectedDpi = metadata.dpi ? Math.max(1, Math.round(metadata.dpi)) : 300
-    setSourceDpi(detectedDpi)
-    setExportDpi(detectedDpi)
+      const maxPreviewEdge = 2048
+      const scale = Math.min(1, maxPreviewEdge / Math.max(bitmap.width, bitmap.height))
+      const previewW = Math.max(1, Math.round(bitmap.width * scale))
+      const previewH = Math.max(1, Math.round(bitmap.height * scale))
+      const previewCanvas = document.createElement('canvas')
+      previewCanvas.width = previewW
+      previewCanvas.height = previewH
+      const previewCtx = previewCanvas.getContext('2d')
+      if (previewCtx) {
+        previewCtx.imageSmoothingEnabled = true
+        previewCtx.drawImage(bitmap, 0, 0, previewW, previewH)
+      }
+      const preview = await createImageBitmap(previewCanvas)
 
-    const nextTilesX = Math.max(1, Math.ceil(exportWidthPx / Math.max(1, bitmap.width)))
-    setExportTilesX(nextTilesX)
-    const nextTileH = (exportWidthPx / Math.max(1, nextTilesX)) * (bitmap.height / Math.max(1, bitmap.width))
-    const nextTilesY = Math.max(1, Math.ceil(exportHeightPx / Math.max(1, nextTileH)))
-    setCheckTilesX(Math.min(12, nextTilesX))
-    setCheckTilesY(Math.min(12, nextTilesY))
+      setSourceImage((prev) => {
+        prev?.close()
+        return bitmap!
+      })
+      setPreviewImage((prev) => {
+        prev?.close()
+        return preview
+      })
+      setPreviewScale(scale)
+      setCustomBaseWidth(bitmap.width)
+      setCustomBaseHeight(bitmap.height)
+
+      const detectedDpi = metadata.dpi ? Math.max(1, Math.round(metadata.dpi)) : 300
+      setSourceDpi(detectedDpi)
+      setExportDpi(detectedDpi)
+
+      const nextTilesX = Math.max(1, Math.ceil(exportWidthPx / Math.max(1, bitmap.width)))
+      setExportTilesX(nextTilesX)
+      const nextTileH = (exportWidthPx / Math.max(1, nextTilesX)) * (bitmap.height / Math.max(1, bitmap.width))
+      const nextTilesY = Math.max(1, Math.ceil(exportHeightPx / Math.max(1, nextTileH)))
+      setCheckTilesX(Math.min(12, nextTilesX))
+      setCheckTilesY(Math.min(12, nextTilesY))
+    } catch {
+      bitmap?.close()
+      window.alert(text.uploadError)
+    }
   }
 
   const handlePreviewExport = useCallback(() => {
     setCheckTilesX(Math.max(1, exportTilesX))
     setCheckTilesY(Math.max(1, autoExportTilesY))
     engine.resetView()
-  }, [autoExportTilesY, engine.resetView, exportTilesX])
+  }, [autoExportTilesY, engine, exportTilesX])
 
   const handleAutoUpscale = () => {
     setExportUpscale(Math.max(1, suggestedUpscale))
@@ -248,7 +262,7 @@ function App() {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [engine.exportPNG, engine.resetView, handlePreviewExport])
+  }, [engine, handlePreviewExport])
 
   useEffect(() => {
     return () => {

@@ -99,6 +99,8 @@ export const uiText = {
     leftRight: '左 vs 右',
     topBottom: '上 vs 下',
     uploadHint: '上傳 PNG 或 JPG 開始檢查',
+    uploadError: '無法讀取圖片，請改用其他檔案。',
+    uploadTooLarge: '檔案過大，上限為 50 MB。',
     exportFail: (w: number, h: number) => `匯出失敗（${w}x${h}），請降低尺寸或 DPI。`,
     exportScaled: (sw: number, sh: number, rw: number, rh: number) =>
       `已使用瀏覽器安全尺寸匯出：${sw}x${sh}（原需求 ${rw}x${rh}）。`,
@@ -202,6 +204,8 @@ export const uiText = {
     leftRight: 'Left vs Right',
     topBottom: 'Top vs Bottom',
     uploadHint: 'Upload a PNG or JPG tile to start inspection',
+    uploadError: 'Failed to load image. Please try a different file.',
+    uploadTooLarge: 'File too large. Maximum size is 50 MB.',
     exportFail: (w: number, h: number) => `Export failed at ${w}x${h}. Try smaller output size or lower DPI.`,
     exportScaled: (sw: number, sh: number, rw: number, rh: number) =>
       `Exported with browser-safe size: ${sw}x${sh} (requested ${rw}x${rh}).`,
