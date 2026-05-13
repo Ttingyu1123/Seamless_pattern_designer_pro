@@ -371,15 +371,15 @@ export function useCanvasEngine({
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
       const bg = ctx.createLinearGradient(0, 0, canvasSize.width, canvasSize.height)
-      bg.addColorStop(0, '#fdf6f6')
-      bg.addColorStop(0.55, '#f1e4e6')
-      bg.addColorStop(1, '#e8d8db')
+      bg.addColorStop(0, '#FDFCF5')
+      bg.addColorStop(0.55, '#F0EDE0')
+      bg.addColorStop(1, '#E8E4D5')
       ctx.fillStyle = bg
       ctx.fillRect(0, 0, canvasSize.width, canvasSize.height)
 
       if (!drawTileCanvas) {
-        ctx.fillStyle = '#7a525a'
-        ctx.font = '600 18px "Space Grotesk", sans-serif'
+        ctx.fillStyle = '#745A86'
+        ctx.font = '600 18px "Noto Sans TC", system-ui, sans-serif'
         ctx.fillText(text.uploadHint, 24, 48)
         return
       }
