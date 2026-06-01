@@ -922,6 +922,11 @@ button:disabled {
   z-index: 5;
 }
 
+.empty-canvas-hint.clickable {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
 .empty-canvas-hint span {
   padding: 16px 28px;
   background: rgba(248, 247, 238, 0.8);

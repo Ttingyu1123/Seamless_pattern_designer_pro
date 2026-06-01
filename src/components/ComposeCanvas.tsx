@@ -26,6 +26,7 @@ export function ComposeCanvas({ lang }: Props) {
   const dragCountRef = useRef(0)
   const dragState = useRef<DragState | null>(null)
   const spaceHeld = useRef(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const tileSizePx = useComposerStore((s) => s.tileSizePx)
   const layers = useComposerStore((s) => s.layers)
@@ -324,10 +325,55 @@ export function ComposeCanvas({ lang }: Props) {
           </div>
         )}
         {layers.length === 0 && !isDragOver && (
-          <div className="empty-canvas-hint">
+          <div className="empty-canvas-hint clickable" onClick={() => fileRef.current?.click()}>
             <span>{text.noLayers}</span>
           </div>
         )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          multiple
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            if (e.target.files) {
+              const files = e.target.files
+              const view = getViewState()
+              for (const file of Array.from(files)) {
+                if (!file.type.startsWith('image/')) continue
+                readFileAsDataUrl(file).then(dataUrl =>
+                  getImageDimensions(dataUrl).then(dims => {
+                    const fitScale = Math.min(
+                      tileSizePx.width * 0.7 / dims.width,
+                      tileSizePx.height * 0.7 / dims.height,
+                      1,
+                    )
+                    const layer: MotifLayer = {
+                      id: crypto.randomUUID(),
+                      name: file.name.replace(/\.[^.]+$/, ''),
+                      imageDataUrl: dataUrl,
+                      naturalWidth: dims.width,
+                      naturalHeight: dims.height,
+                      x: tileSizePx.width / 2,
+                      y: tileSizePx.height / 2,
+                      rotation: 0,
+                      scaleX: fitScale,
+                      scaleY: fitScale,
+                      opacity: 1,
+                      hue: 0,
+                      saturation: 0,
+                      brightness: 0,
+                      visible: true,
+                      locked: false,
+                    }
+                    loadLayerImage(layer).then(() => addLayer(layer))
+                  })
+                )
+              }
+            }
+            e.target.value = ''
+          }}
+        />
       </div>
     </section>
   )
