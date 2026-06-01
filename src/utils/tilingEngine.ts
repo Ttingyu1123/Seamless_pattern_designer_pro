@@ -1,4 +1,14 @@
-export type RepeatMode = 'grid' | 'half-drop-row' | 'half-drop-column'
+export type RepeatMode =
+  | 'grid'
+  | 'half-drop-row'
+  | 'half-drop-column'
+  | 'half-brick'
+  | 'mirror-x'
+  | 'mirror-y'
+  | 'mirror-xy'
+  | 'hexagonal'
+  | 'diamond'
+  | 'horizontal-only'
 
 export interface RepeatBaseSize {
   width: number
@@ -39,7 +49,31 @@ export function getTileOffset({
     return { offsetX: 0, offsetY: tileHeight * shift }
   }
 
+  if (repeatMode === 'half-brick' && rowIsOdd) {
+    return { offsetX: tileWidth * 0.5, offsetY: 0 }
+  }
+
+  if (repeatMode === 'hexagonal' && rowIsOdd) {
+    return { offsetX: tileWidth * 0.5, offsetY: 0 }
+  }
+
+  if (repeatMode === 'diamond') {
+    return { offsetX: col * tileWidth * 0.5, offsetY: row * tileHeight * 0.5 }
+  }
+
   return { offsetX: 0, offsetY: 0 }
+}
+
+export function shouldFlipX(row: number, col: number, repeatMode: RepeatMode): boolean {
+  if (repeatMode === 'mirror-x') return Math.abs(col) % 2 === 1
+  if (repeatMode === 'mirror-xy') return Math.abs(col) % 2 === 1
+  return false
+}
+
+export function shouldFlipY(row: number, col: number, repeatMode: RepeatMode): boolean {
+  if (repeatMode === 'mirror-y') return Math.abs(row) % 2 === 1
+  if (repeatMode === 'mirror-xy') return Math.abs(row) % 2 === 1
+  return false
 }
 
 export function shouldMirrorTile(row: number, col: number, mirrorEnabled: boolean): boolean {

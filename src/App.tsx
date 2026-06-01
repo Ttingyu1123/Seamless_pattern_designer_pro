@@ -3,17 +3,23 @@ import './App.css'
 import { CanvasView } from './components/CanvasView'
 import { ControlPanel } from './components/ControlPanel'
 import { HeatmapOverlay } from './components/HeatmapOverlay'
+import { ComposePanel } from './components/ComposePanel'
+import { ComposeCanvas } from './components/ComposeCanvas'
+import { RepeatPreview } from './components/RepeatPreview'
 import { useCanvasEngine } from './hooks/useCanvasEngine'
 import { convertToPixels, readImageMetadata } from './utils/imageMetadata'
 import { uiText, type UILang } from './i18n'
+import { composeText } from './i18n-compose'
 import type { RepeatMode } from './utils/tilingEngine'
 import { MAX_EXPORT_EDGE, MAX_EXPORT_AREA, MAX_UPLOAD_SIZE_MB, ACCEPTED_IMAGE_TYPES } from './utils/constants'
 
+type AppMode = 'inspect' | 'compose'
 type BasePreset = '1x1' | '1x2' | '2x1' | 'custom'
 type ExportUnit = 'px' | 'in' | 'cm'
 type ExportPreset = 'a4' | 'a5' | 'postcard' | 'square20'
 
 function App() {
+  const [appMode, setAppMode] = useState<AppMode>('compose')
   const [lang, setLang] = useState<UILang>('zh')
   const text = uiText[lang]
   const [sourceImage, setSourceImage] = useState<ImageBitmap | null>(null)
@@ -264,6 +270,8 @@ function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [engine, handlePreviewExport])
 
+  const cText = composeText[lang]
+
   useEffect(() => {
     return () => {
       sourceImage?.close()
@@ -273,6 +281,37 @@ function App() {
 
   return (
     <main className="app-shell">
+      {/* Mode switch tabs */}
+      <nav className="mode-tabs">
+        <button
+          className={`mode-tab ${appMode === 'compose' ? 'active' : ''}`}
+          onClick={() => setAppMode('compose')}
+        >
+          {cText.modeCompose}
+        </button>
+        <button
+          className={`mode-tab ${appMode === 'inspect' ? 'active' : ''}`}
+          onClick={() => setAppMode('inspect')}
+        >
+          {cText.modeInspect}
+        </button>
+        <button className="lang-toggle-global" onClick={() => setLang((p) => p === 'zh' ? 'en' : 'zh')}>
+          {lang === 'zh' ? 'EN' : '中'}
+        </button>
+      </nav>
+
+      {appMode === 'compose' && (
+        <>
+          <ComposePanel lang={lang} />
+          <div className="compose-split-view">
+            <ComposeCanvas lang={lang} />
+            <RepeatPreview lang={lang} />
+          </div>
+        </>
+      )}
+
+      {appMode === 'inspect' && (
+        <>
       <ControlPanel
         lang={lang}
         onToggleLanguage={() => setLang((prev) => (prev === 'zh' ? 'en' : 'zh'))}
@@ -383,6 +422,8 @@ function App() {
           <p>{text.shortcutReset}</p>
         </aside>
       </section>
+        </>
+      )}
     </main>
   )
 }

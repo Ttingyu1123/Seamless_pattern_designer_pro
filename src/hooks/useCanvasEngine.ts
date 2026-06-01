@@ -166,15 +166,14 @@ export function useCanvasEngine({
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0]
       if (!entry) return
-      setCanvasSize({
-        width: Math.max(1, Math.floor(entry.contentRect.width)),
-        height: Math.max(1, Math.floor(entry.contentRect.height)),
-      })
+      const w = Math.max(1, Math.floor(entry.contentRect.width))
+      const h = Math.max(1, Math.floor(entry.contentRect.height))
+      setCanvasSize((prev) => (prev.width === w && prev.height === h) ? prev : { width: w, height: h })
     })
 
     observer.observe(container)
     return () => observer.disconnect()
-  }, [])
+  }, [previewImage])
 
   const fitView = useCallback(() => {
     if (!drawTileCanvas) {
@@ -355,6 +354,14 @@ export function useCanvasEngine({
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
+
+    if (canvasSize.width <= 1 && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+      if (rect.width > 1) {
+        setCanvasSize({ width: Math.floor(rect.width), height: Math.floor(rect.height) })
+        return
+      }
+    }
 
     const dpr = window.devicePixelRatio || 1
     canvas.width = Math.floor(canvasSize.width * dpr)
