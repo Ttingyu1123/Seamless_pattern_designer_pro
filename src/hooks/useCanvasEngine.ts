@@ -50,6 +50,7 @@ interface UseCanvasEngineInput {
   offsetPreview: boolean
   previewRepeatBase: RepeatBaseSize
   exportRepeatBase: RepeatBaseSize
+  pdfBleed: boolean
   exportTarget: {
     widthPx: number
     heightPx: number
@@ -114,6 +115,7 @@ export function useCanvasEngine({
   offsetPreview,
   previewRepeatBase,
   exportRepeatBase,
+  pdfBleed,
   exportTarget,
 }: UseCanvasEngineInput): UseCanvasEngineResult {
   const text = uiText[lang]
@@ -293,11 +295,16 @@ export function useCanvasEngine({
     if (!resolved) return
 
     const { exportTile, requestedBaseWidth, requestedBaseHeight, requestedWidth, requestedHeight } = resolved
-    const target = safeExportSize(requestedWidth, requestedHeight)
+
+    const BLEED_MM = 3
+    const bleedPx = pdfBleed ? Math.round((BLEED_MM / 25.4) * exportTarget.dpi) : 0
+    const canvasW = requestedWidth + bleedPx * 2
+    const canvasH = requestedHeight + bleedPx * 2
+    const target = safeExportSize(canvasW, canvasH)
 
     const exportCanvas = renderExportCanvas(exportTile, {
-      requestedWidth,
-      requestedHeight,
+      requestedWidth: canvasW,
+      requestedHeight: canvasH,
       tilesX: exportTarget.tilesX,
       tilesY: exportTarget.tilesY,
       repeatMode,
@@ -313,8 +320,9 @@ export function useCanvasEngine({
     if (!exportCanvas) return
 
     try {
-      const pageWidthIn = requestedWidth / Math.max(1, exportTarget.dpi)
-      const pageHeightIn = requestedHeight / Math.max(1, exportTarget.dpi)
+      const dpi = Math.max(1, exportTarget.dpi)
+      const pageWidthIn = canvasW / dpi
+      const pageHeightIn = canvasH / dpi
       const pdf = new jsPDF({
         orientation: pageWidthIn >= pageHeightIn ? 'landscape' : 'portrait',
         unit: 'in',
@@ -323,11 +331,33 @@ export function useCanvasEngine({
       })
       const imageData = exportCanvas.toDataURL('image/png')
       pdf.addImage(imageData, 'PNG', 0, 0, pageWidthIn, pageHeightIn, undefined, 'NONE')
+
+      if (pdfBleed) {
+        const bleedIn = BLEED_MM / 25.4
+        const trimMarkLen = 0.15
+        pdf.setDrawColor(0, 0, 0)
+        pdf.setLineWidth(0.003)
+        const trimLeft = bleedIn
+        const trimTop = bleedIn
+        const trimRight = pageWidthIn - bleedIn
+        const trimBottom = pageHeightIn - bleedIn
+
+        pdf.line(trimLeft, 0, trimLeft, trimMarkLen)
+        pdf.line(trimLeft, pageHeightIn - trimMarkLen, trimLeft, pageHeightIn)
+        pdf.line(trimRight, 0, trimRight, trimMarkLen)
+        pdf.line(trimRight, pageHeightIn - trimMarkLen, trimRight, pageHeightIn)
+
+        pdf.line(0, trimTop, trimMarkLen, trimTop)
+        pdf.line(pageWidthIn - trimMarkLen, trimTop, pageWidthIn, trimTop)
+        pdf.line(0, trimBottom, trimMarkLen, trimBottom)
+        pdf.line(pageWidthIn - trimMarkLen, trimBottom, pageWidthIn, trimBottom)
+      }
+
       pdf.save(buildExportFilename('pdf', requestedBaseWidth, requestedBaseHeight, exportTarget.dpi))
 
       if (target.scaled) {
         window.alert(
-          text.exportScaled(target.width, target.height, requestedWidth, requestedHeight),
+          text.exportScaled(target.width, target.height, canvasW, canvasH),
         )
       }
     } catch {
@@ -336,6 +366,7 @@ export function useCanvasEngine({
   }, [
     resolveExportTile,
     exportTarget,
+    pdfBleed,
     mirrorEnabled,
     repeatMode,
     seamAnalysis,

@@ -364,6 +364,17 @@ button:disabled {
   background: linear-gradient(180deg, rgba(248, 247, 238, 0), rgba(248, 247, 238, 0.95) 36%);
 }
 
+.bleed-toggle {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: #555;
+  cursor: pointer;
+  user-select: none;
+}
+
 .toast {
   position: sticky;
   bottom: 64px;

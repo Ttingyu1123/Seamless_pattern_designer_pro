@@ -47,6 +47,7 @@ function App() {
   const [exportHeightInput, setExportHeightInput] = useState(24)
   const [exportTilesX, setExportTilesX] = useState(6)
   const [exportUpscale, setExportUpscale] = useState(1)
+  const [pdfBleed, setPdfBleed] = useState(false)
 
   const repeatBase = useMemo(() => {
     if (!sourceImage) {
@@ -145,6 +146,7 @@ function App() {
     offsetPreview,
     previewRepeatBase,
     exportRepeatBase: repeatBase,
+    pdfBleed,
     exportTarget: {
       widthPx: exportWidthPx,
       heightPx: exportHeightPx,
@@ -371,6 +373,8 @@ function App() {
         onExportTilesXChange={setExportTilesX}
         onExportUpscaleChange={setExportUpscale}
         onAutoUpscale={handleAutoUpscale}
+        pdfBleed={pdfBleed}
+        onPdfBleedChange={setPdfBleed}
         onApplyExportPreset={handleApplyExportPreset}
         onPreviewExport={handlePreviewExport}
         onExport={engine.exportPNG}

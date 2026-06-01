@@ -91,6 +91,7 @@ export const uiText = {
     finalExportPixels: '最終輸出像素',
     exportPng: '匯出 PNG',
     exportPdf: '匯出 PDF',
+    pdfBleed: '含出血 3mm（印刷用）',
     resetView: '重設視圖',
     qualityWarning: (ratio: number) => `目前每塊需放大約 ${ratio.toFixed(2)}x，建議提高拼接數或使用 Auto Upscale。`,
     limitWarning: '目前輸出像素可能超過瀏覽器限制，匯出時可能自動縮小。',
@@ -202,6 +203,7 @@ export const uiText = {
     finalExportPixels: 'Final Export Pixels',
     exportPng: 'Export PNG',
     exportPdf: 'Export PDF',
+    pdfBleed: 'Include 3mm bleed (for print)',
     resetView: 'Reset View',
     qualityWarning: (ratio: number) =>
       `Each tile currently needs about ${ratio.toFixed(2)}x upscaling. Increase tile count or use Auto Upscale.`,

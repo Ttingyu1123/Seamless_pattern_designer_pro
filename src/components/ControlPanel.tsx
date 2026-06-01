@@ -147,6 +147,8 @@ interface ControlPanelProps {
   onExportUpscaleChange: (value: number) => void
   onAutoUpscale: () => void
   onApplyExportPreset: (preset: ExportPreset) => void
+  pdfBleed: boolean
+  onPdfBleedChange: (value: boolean) => void
   onPreviewExport: () => void
   onExport: () => void
   onExportPdf: () => void
@@ -211,6 +213,8 @@ export const ControlPanel = memo(function ControlPanel({
   onExportTilesXChange,
   onExportUpscaleChange,
   onAutoUpscale,
+  pdfBleed,
+  onPdfBleedChange,
   onApplyExportPreset,
   onPreviewExport,
   onExport,
@@ -725,6 +729,10 @@ export const ControlPanel = memo(function ControlPanel({
         <button type="button" className="primary-btn" onClick={onExport} disabled={!hasImage}>
           {text.exportPng}
         </button>
+        <label className="bleed-toggle">
+          <input type="checkbox" checked={pdfBleed} onChange={(e) => onPdfBleedChange(e.target.checked)} />
+          {text.pdfBleed}
+        </label>
         <button type="button" className="secondary-btn" onClick={onExportPdf} disabled={!hasImage}>
           {text.exportPdf}
         </button>
