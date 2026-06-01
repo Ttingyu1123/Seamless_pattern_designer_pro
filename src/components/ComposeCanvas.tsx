@@ -65,6 +65,17 @@ export function ComposeCanvas({ lang }: Props) {
     return () => clearTimeout(timer)
   }, [layers, tileSizePx])
 
+  // Prevent browser touch gestures (scroll/zoom) on the canvas area
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const prevent = (e: TouchEvent) => {
+      if (e.touches.length >= 1) e.preventDefault()
+    }
+    el.addEventListener('touchmove', prevent, { passive: false })
+    return () => el.removeEventListener('touchmove', prevent)
+  }, [containerRef])
+
   // Keyboard shortcuts
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {

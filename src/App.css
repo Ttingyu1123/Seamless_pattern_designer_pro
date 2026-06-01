@@ -962,6 +962,8 @@ button:disabled {
   border-radius: 12px;
   border: 2px solid transparent;
   transition: border-color 0.2s;
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 
 .compose-canvas-container.drag-over {
@@ -973,6 +975,7 @@ button:disabled {
   position: absolute;
   inset: 0;
   cursor: default;
+  touch-action: none;
 }
 
 .drop-overlay {
