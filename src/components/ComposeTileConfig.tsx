@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useComposerStore } from '../store/composerStore'
 import type { TileSizeUnit } from '../store/composerStore'
 import type { UILang } from '../i18n'
@@ -19,6 +20,32 @@ const HALFDROP_PRESETS = [
   { label: { zh: 'HD-Col 250×500', en: 'HD-Col 250×500' }, w: 250, h: 500 },
 ] as const
 
+type CalcUnit = 'cm' | 'mm' | 'in'
+
+const PRINT_PRESETS: { label: { zh: string; en: string }; sizeCm: number; dpi: number }[] = [
+  { label: { zh: '5cm @300', en: '5cm @300' }, sizeCm: 5, dpi: 300 },
+  { label: { zh: '10cm @300', en: '10cm @300' }, sizeCm: 10, dpi: 300 },
+  { label: { zh: '15cm @300', en: '15cm @300' }, sizeCm: 15, dpi: 300 },
+  { label: { zh: '20cm @300', en: '20cm @300' }, sizeCm: 20, dpi: 300 },
+  { label: { zh: '10cm @150', en: '10cm @150' }, sizeCm: 10, dpi: 150 },
+]
+
+function cmToPx(cm: number, dpi: number) {
+  return Math.round((cm / 2.54) * dpi)
+}
+
+function physicalToPx(val: number, unit: CalcUnit, dpi: number) {
+  if (unit === 'cm') return Math.round((val / 2.54) * dpi)
+  if (unit === 'mm') return Math.round((val / 25.4) * dpi)
+  return Math.round(val * dpi)
+}
+
+function pxToPhysical(px: number, unit: CalcUnit, dpi: number) {
+  if (unit === 'cm') return Number(((px / dpi) * 2.54).toFixed(2))
+  if (unit === 'mm') return Number(((px / dpi) * 25.4).toFixed(1))
+  return Number((px / dpi).toFixed(2))
+}
+
 export function ComposeTileConfig({ lang }: Props) {
   const text = composeText[lang]
   const tileSizePx = useComposerStore((s) => s.tileSizePx)
@@ -34,7 +61,17 @@ export function ComposeTileConfig({ lang }: Props) {
   const setAspectLocked = useComposerStore((s) => s.setAspectLocked)
   const setBackgroundColor = useComposerStore((s) => s.setBackgroundColor)
 
+  const [calcOpen, setCalcOpen] = useState(false)
+  const [calcUnit, setCalcUnit] = useState<CalcUnit>('cm')
+  const [calcW, setCalcW] = useState(10)
+  const [calcH, setCalcH] = useState(10)
+  const [calcDpi, setCalcDpi] = useState(300)
+
+  const calcResultW = physicalToPx(calcW, calcUnit, calcDpi)
+  const calcResultH = physicalToPx(calcH, calcUnit, calcDpi)
+
   const aspect = tileSizePx.width / tileSizePx.height
+  const isPhysical = tileSizeUnit === 'mm' || tileSizeUnit === 'cm'
 
   const handleWidthChange = (value: number) => {
     const w = Math.max(10, Math.round(value))
@@ -48,35 +85,50 @@ export function ComposeTileConfig({ lang }: Props) {
     setTileSize({ width: w, height: h })
   }
 
-  const displayWidth = tileSizeUnit === 'mm'
-    ? Number(((tileSizePx.width / tileDpi) * 25.4).toFixed(1))
+  const unitFactor = tileSizeUnit === 'cm' ? 2.54 : 25.4
+
+  const displayWidth = isPhysical
+    ? Number(((tileSizePx.width / tileDpi) * unitFactor).toFixed(tileSizeUnit === 'cm' ? 2 : 1))
     : tileSizePx.width
 
-  const displayHeight = tileSizeUnit === 'mm'
-    ? Number(((tileSizePx.height / tileDpi) * 25.4).toFixed(1))
+  const displayHeight = isPhysical
+    ? Number(((tileSizePx.height / tileDpi) * unitFactor).toFixed(tileSizeUnit === 'cm' ? 2 : 1))
     : tileSizePx.height
 
   const handleDisplayWidthChange = (val: number) => {
-    if (tileSizeUnit === 'mm') {
-      handleWidthChange((val / 25.4) * tileDpi)
+    if (isPhysical) {
+      handleWidthChange((val / unitFactor) * tileDpi)
     } else {
       handleWidthChange(val)
     }
   }
 
   const handleDisplayHeightChange = (val: number) => {
-    if (tileSizeUnit === 'mm') {
-      handleHeightChange((val / 25.4) * tileDpi)
+    if (isPhysical) {
+      handleHeightChange((val / unitFactor) * tileDpi)
     } else {
       handleHeightChange(val)
     }
+  }
+
+  const applyCalcResult = () => {
+    setTileDpi(calcDpi)
+    setTileSize({ width: calcResultW, height: calcResultH })
+    setTileSizeUnit('cm')
+  }
+
+  const applyPrintPreset = (sizeCm: number, dpi: number) => {
+    const px = cmToPx(sizeCm, dpi)
+    setTileDpi(dpi)
+    setTileSize({ width: px, height: px })
+    setTileSizeUnit('cm')
   }
 
   return (
     <div className="compose-tile-config">
       <h4 className="section-title">{text.tileConfig}</h4>
 
-      {/* Presets */}
+      {/* Pixel presets */}
       <div className="preset-row">
         {PRESETS.map((p) => (
           <button
@@ -113,6 +165,75 @@ export function ComposeTileConfig({ lang }: Props) {
         </>
       )}
 
+      {/* Print presets */}
+      <div className="print-presets-section">
+        <span className="print-presets-label">{text.printPresets}</span>
+        <div className="preset-row">
+          {PRINT_PRESETS.map((p) => {
+            const px = cmToPx(p.sizeCm, p.dpi)
+            return (
+              <button
+                key={p.label.en}
+                className="preset-btn preset-btn--print"
+                onClick={() => applyPrintPreset(p.sizeCm, p.dpi)}
+                title={`${p.sizeCm}cm × ${p.sizeCm}cm @ ${p.dpi}dpi = ${px}×${px}px`}
+              >
+                {p.label[lang]}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Print Size Calculator */}
+      <details className="calc-section" open={calcOpen} onToggle={(e) => setCalcOpen((e.target as HTMLDetailsElement).open)}>
+        <summary className="calc-summary">{text.printCalc}</summary>
+        <div className="calc-body">
+          <div className="ctrl-row">
+            <label>{text.unit}</label>
+            <select value={calcUnit} onChange={(e) => setCalcUnit(e.target.value as CalcUnit)}>
+              <option value="cm">cm</option>
+              <option value="mm">mm</option>
+              <option value="in">inch</option>
+            </select>
+            <label>{text.dpi}</label>
+            <input
+              type="number"
+              min={72}
+              max={1200}
+              step={1}
+              value={calcDpi}
+              onChange={(e) => setCalcDpi(Math.max(72, Number(e.target.value)))}
+            />
+          </div>
+          <div className="ctrl-row">
+            <label>{text.width}</label>
+            <input
+              type="number"
+              min={0.1}
+              step={calcUnit === 'mm' ? 1 : 0.5}
+              value={calcW}
+              onChange={(e) => setCalcW(Math.max(0.1, Number(e.target.value)))}
+            />
+            <label>{text.height}</label>
+            <input
+              type="number"
+              min={0.1}
+              step={calcUnit === 'mm' ? 1 : 0.5}
+              value={calcH}
+              onChange={(e) => setCalcH(Math.max(0.1, Number(e.target.value)))}
+            />
+          </div>
+          <div className="calc-result">
+            <span className="calc-result-label">{text.resultPx}</span>
+            <strong>{calcResultW} × {calcResultH} px</strong>
+            <button className="preset-btn preset-btn--apply" onClick={applyCalcResult}>
+              {text.applySize}
+            </button>
+          </div>
+        </div>
+      </details>
+
       {/* Unit selector */}
       <div className="ctrl-row">
         <label>{text.unit}</label>
@@ -122,6 +243,7 @@ export function ComposeTileConfig({ lang }: Props) {
         >
           <option value="px">px</option>
           <option value="mm">mm</option>
+          <option value="cm">cm</option>
         </select>
       </div>
 
@@ -130,8 +252,8 @@ export function ComposeTileConfig({ lang }: Props) {
         <label>{text.width}</label>
         <input
           type="number"
-          min={tileSizeUnit === 'mm' ? 1 : 10}
-          step={tileSizeUnit === 'mm' ? 0.5 : 10}
+          min={isPhysical ? 0.1 : 10}
+          step={isPhysical ? (tileSizeUnit === 'cm' ? 0.5 : 1) : 10}
           value={displayWidth}
           onChange={(e) => handleDisplayWidthChange(Number(e.target.value))}
         />
@@ -145,15 +267,15 @@ export function ComposeTileConfig({ lang }: Props) {
         <label>{text.height}</label>
         <input
           type="number"
-          min={tileSizeUnit === 'mm' ? 1 : 10}
-          step={tileSizeUnit === 'mm' ? 0.5 : 10}
+          min={isPhysical ? 0.1 : 10}
+          step={isPhysical ? (tileSizeUnit === 'cm' ? 0.5 : 1) : 10}
           value={displayHeight}
           onChange={(e) => handleDisplayHeightChange(Number(e.target.value))}
         />
       </div>
 
-      {/* DPI (only shown for mm) */}
-      {tileSizeUnit === 'mm' && (
+      {/* DPI (shown for physical units) */}
+      {isPhysical && (
         <div className="ctrl-row">
           <label>DPI</label>
           <input
@@ -166,6 +288,15 @@ export function ComposeTileConfig({ lang }: Props) {
           />
           <span className="hint">({tileSizePx.width}×{tileSizePx.height}px)</span>
         </div>
+      )}
+
+      {/* Physical size info when in px mode */}
+      {tileSizeUnit === 'px' && (
+        <p className="tile-hint">
+          {lang === 'zh'
+            ? `@${tileDpi}dpi = ${pxToPhysical(tileSizePx.width, 'cm', tileDpi)} × ${pxToPhysical(tileSizePx.height, 'cm', tileDpi)} cm`
+            : `@${tileDpi}dpi = ${pxToPhysical(tileSizePx.width, 'cm', tileDpi)} × ${pxToPhysical(tileSizePx.height, 'cm', tileDpi)} cm`}
+        </p>
       )}
 
       {/* Background color */}

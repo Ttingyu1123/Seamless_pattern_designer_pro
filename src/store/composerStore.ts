@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { temporal } from 'zundo'
 import type { RepeatMode } from '../utils/tilingEngine'
 
-export type TileSizeUnit = 'px' | 'mm'
+export type TileSizeUnit = 'px' | 'mm' | 'cm'
 export type TileDirection = 'both' | 'horizontal'
 export type GuideType = 'center' | 'thirds' | 'quadrants' | 'mode-specific'
 export type ComposeTool = 'select' | 'pan'

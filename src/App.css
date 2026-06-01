@@ -711,6 +711,90 @@ button:disabled {
   font-family: monospace;
 }
 
+/* Print presets section */
+.print-presets-section {
+  margin-bottom: 10px;
+}
+
+.print-presets-label {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.preset-btn--print {
+  background: rgba(139, 107, 123, 0.08);
+  border-color: var(--rose-muted, #c4a0b0);
+}
+
+.preset-btn--print:hover {
+  background: rgba(139, 107, 123, 0.2);
+}
+
+/* Print size calculator */
+.calc-section {
+  margin-bottom: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.calc-summary {
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(161, 134, 180, 0.08);
+  user-select: none;
+}
+
+.calc-summary:hover {
+  background: rgba(161, 134, 180, 0.15);
+}
+
+.calc-body {
+  padding: 8px 10px;
+}
+
+.calc-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: rgba(161, 134, 180, 0.08);
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+.calc-result-label {
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+}
+
+.calc-result strong {
+  font-family: monospace;
+  flex: 1;
+}
+
+.preset-btn--apply {
+  background: var(--rose-deep, #8b6b7b);
+  color: #fff;
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.preset-btn--apply:hover {
+  opacity: 0.9;
+}
+
+/* Motif size block */
+.motif-size-block {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
 /* Layer list */
 .layer-list {
   display: flex;

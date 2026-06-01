@@ -5,7 +5,7 @@ import type { TileDirection, GuideType } from '../store/composerStore'
 interface ProjectData {
   version: 1
   tileSizePx: { width: number; height: number }
-  tileSizeUnit: 'px' | 'mm'
+  tileSizeUnit: 'px' | 'mm' | 'cm'
   tileDpi: number
   aspectLocked: boolean
   backgroundColor: string | null
@@ -22,7 +22,7 @@ interface ProjectData {
 
 export function serializeProject(state: {
   tileSizePx: { width: number; height: number }
-  tileSizeUnit: 'px' | 'mm'
+  tileSizeUnit: 'px' | 'mm' | 'cm'
   tileDpi: number
   aspectLocked: boolean
   backgroundColor: string | null

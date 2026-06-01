@@ -1,9 +1,10 @@
-﻿import { memo, useEffect, useMemo, useState } from 'react'
+﻿import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { uiText, type UILang } from '../i18n'
 import type { RepeatBaseSize, RepeatMode } from '../utils/tilingEngine'
 
 type ExportUnit = 'px' | 'in' | 'cm'
 type ExportPreset = 'a4' | 'a5' | 'postcard' | 'square20'
+type MotifUnit = 'cm' | 'in'
 
 type TabMode = 'inspection' | 'output'
 
@@ -235,6 +236,8 @@ export const ControlPanel = memo(function ControlPanel({
   )
   const [mobileTab, setMobileTab] = useState<TabMode>('inspection')
   const [previewToast, setPreviewToast] = useState(false)
+  const [motifUnit, setMotifUnit] = useState<MotifUnit>('cm')
+  const [motifWInput, setMotifWInput] = useState<number | null>(null)
 
   useEffect(() => {
     try {
@@ -257,6 +260,22 @@ export const ControlPanel = memo(function ControlPanel({
     if (!imageSize) return text.noImage
     return `${imageSize.width} x ${imageSize.height}px`
   }, [imageSize, text.noImage])
+
+  const motifPxW = exportTilesX > 0 ? exportWidthPx / exportTilesX : 0
+  const motifFactor = motifUnit === 'cm' ? 2.54 : 1
+  const currentMotifW = exportDpi > 0 ? Number(((motifPxW / exportDpi) * motifFactor).toFixed(2)) : 0
+  const currentMotifH = imageSize && exportTilesX > 0
+    ? Number((((exportWidthPx / exportTilesX) * (imageSize.height / imageSize.width) / exportDpi) * motifFactor).toFixed(2))
+    : 0
+
+  const applyMotifSize = useCallback(() => {
+    if (!motifWInput || motifWInput <= 0 || exportDpi <= 0) return
+    const targetPx = (motifWInput / motifFactor) * exportDpi
+    if (targetPx > 0 && exportWidthPx > 0) {
+      const newTilesX = Math.max(1, Math.round(exportWidthPx / targetPx))
+      onExportTilesXChange(newTilesX)
+    }
+  }, [motifWInput, motifFactor, exportDpi, exportWidthPx, onExportTilesXChange])
 
   const handlePreview = () => {
     onPreviewExport()
@@ -626,6 +645,37 @@ export const ControlPanel = memo(function ControlPanel({
                 {suggestedTilesX} x {suggestedTilesY}
               </strong>
             </div>
+
+            {/* Motif physical size */}
+            <details className="advanced-block motif-size-block">
+              <summary>{text.motifSize}</summary>
+              <div className="advanced-content">
+                <p className="hint-text">{text.motifSizeHint}</p>
+                <div className="meta-row">
+                  <span>{text.currentMotifSize}</span>
+                  <strong>{currentMotifW} × {currentMotifH} {motifUnit}</strong>
+                </div>
+                <div className="field-row">
+                  <label className="field">
+                    <span>{text.motifUnit}</span>
+                    <select value={motifUnit} onChange={(e) => setMotifUnit(e.target.value as MotifUnit)}>
+                      <option value="cm">{text.cm}</option>
+                      <option value="in">{text.inch}</option>
+                    </select>
+                  </label>
+                  <PlainNumberInput
+                    label={`${text.motifW} (${motifUnit})`}
+                    value={motifWInput ?? currentMotifW}
+                    min={0.1}
+                    step={0.5}
+                    onChange={(v) => setMotifWInput(v)}
+                  />
+                </div>
+                <button type="button" className="secondary-btn" onClick={applyMotifSize} disabled={!hasImage || !motifWInput}>
+                  {text.applyMotifSize}
+                </button>
+              </div>
+            </details>
 
             <label className="field">
               <span className="field-label">
