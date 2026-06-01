@@ -1,6 +1,7 @@
 ﻿import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { uiText, type UILang } from '../i18n'
 import type { RepeatBaseSize, RepeatMode } from '../utils/tilingEngine'
+import type { PaletteColor } from '../utils/colorPalette'
 
 type ExportUnit = 'px' | 'in' | 'cm'
 type ExportPreset = 'a4' | 'a5' | 'postcard' | 'square20'
@@ -123,6 +124,10 @@ interface ControlPanelProps {
   effectiveExportHeightPx: number
   exportQualityRatio: number
   exportLimitRisk: boolean
+  palette: PaletteColor[]
+  showDimensions: boolean
+  onShowDimensionsChange: (value: boolean) => void
+  onExportSpecSheet: () => void
   onUpload: (file: File) => void
   onRepeatModeChange: (mode: RepeatMode) => void
   onShiftChange: (value: number) => void
@@ -190,6 +195,10 @@ export const ControlPanel = memo(function ControlPanel({
   effectiveExportHeightPx,
   exportQualityRatio,
   exportLimitRisk,
+  palette,
+  showDimensions,
+  onShowDimensionsChange,
+  onExportSpecSheet,
   onUpload,
   onRepeatModeChange,
   onShiftChange,
@@ -494,11 +503,43 @@ export const ControlPanel = memo(function ControlPanel({
                   </label>
                 </div>
 
+                <div className="toggle-row">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={showDimensions}
+                      onChange={(event) => onShowDimensionsChange(event.target.checked)}
+                    />{' '}
+                    {text.showDimensions}
+                  </label>
+                </div>
+
                 <button type="button" className="secondary-btn" onClick={onResetView} disabled={!hasImage}>
                   {text.resetView}
                 </button>
               </div>
             </details>
+
+            {palette.length > 0 && (
+              <details className="advanced-block palette-block" open>
+                <summary>{text.colorPalette} — {text.colorCount(palette.length)}</summary>
+                <div className="palette-grid">
+                  {palette.map((c) => (
+                    <button
+                      key={c.hex}
+                      type="button"
+                      className="palette-swatch"
+                      style={{ backgroundColor: c.hex }}
+                      title={`${c.hex} (${c.percent}%)`}
+                      onClick={() => { navigator.clipboard.writeText(c.hex) }}
+                    >
+                      <span className="swatch-label">{c.hex}</span>
+                      <span className="swatch-pct">{c.percent}%</span>
+                    </button>
+                  ))}
+                </div>
+              </details>
+            )}
           </>
         ) : null}
       </section>
@@ -735,6 +776,9 @@ export const ControlPanel = memo(function ControlPanel({
         </label>
         <button type="button" className="secondary-btn" onClick={onExportPdf} disabled={!hasImage}>
           {text.exportPdf}
+        </button>
+        <button type="button" className="secondary-btn spec-sheet-btn" onClick={onExportSpecSheet} disabled={!hasImage}>
+          {text.exportSpecSheet}
         </button>
       </div>
 

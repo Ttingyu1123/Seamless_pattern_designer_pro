@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { jsPDF } from 'jspdf'
 import { detectSeams, type SeamAnalysis } from '../utils/seamDetector'
+import { extractPalette, type PaletteColor } from '../utils/colorPalette'
 import {
   createBaseTileCanvas,
   createOffsetPreviewTile,
@@ -51,6 +52,7 @@ interface UseCanvasEngineInput {
   previewRepeatBase: RepeatBaseSize
   exportRepeatBase: RepeatBaseSize
   pdfBleed: boolean
+  showDimensions: boolean
   exportTarget: {
     widthPx: number
     heightPx: number
@@ -69,7 +71,9 @@ interface UseCanvasEngineResult {
   resetView: () => void
   exportPNG: () => void
   exportPDF: () => void
+  exportSpecSheet: () => void
   seamAnalysis: SeamAnalysis | null
+  palette: PaletteColor[]
   handlers: {
     onPointerDown: PointerEventHandler<HTMLCanvasElement>
     onPointerMove: PointerEventHandler<HTMLCanvasElement>
@@ -116,6 +120,7 @@ export function useCanvasEngine({
   previewRepeatBase,
   exportRepeatBase,
   pdfBleed,
+  showDimensions,
   exportTarget,
 }: UseCanvasEngineInput): UseCanvasEngineResult {
   const text = uiText[lang]
@@ -161,6 +166,11 @@ export function useCanvasEngine({
       showHeatmap,
     )
   }, [previewBaseTileCanvas, showHeatmap, showProblemSeams])
+
+  const palette = useMemo(() => {
+    if (!previewBaseTileCanvas) return []
+    return extractPalette(previewBaseTileCanvas)
+  }, [previewBaseTileCanvas])
 
   useLayoutEffect(() => {
     const container = containerRef.current
@@ -378,6 +388,161 @@ export function useCanvasEngine({
     text,
   ])
 
+  const exportSpecSheet = useCallback(() => {
+    const resolved = resolveExportTile()
+    if (!resolved) return
+
+    const { exportTile, requestedBaseWidth, requestedBaseHeight } = resolved
+
+    try {
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
+      const pageW = 210
+      const margin = 15
+      const contentW = pageW - margin * 2
+      let y = margin
+
+      pdf.setFont('helvetica', 'bold')
+      pdf.setFontSize(18)
+      pdf.text('Pattern Spec Sheet', margin, y)
+      y += 10
+
+      pdf.setDrawColor(180)
+      pdf.setLineWidth(0.3)
+      pdf.line(margin, y, pageW - margin, y)
+      y += 8
+
+      const thumbMaxW = contentW * 0.45
+      const thumbMaxH = 80
+      const aspect = exportTile.width / Math.max(1, exportTile.height)
+      let thumbW = thumbMaxW
+      let thumbH = thumbW / aspect
+      if (thumbH > thumbMaxH) { thumbH = thumbMaxH; thumbW = thumbH * aspect }
+      const thumbData = exportTile.toDataURL('image/png')
+
+      pdf.setDrawColor(200)
+      pdf.setLineWidth(0.2)
+      pdf.rect(margin, y, thumbW, thumbH)
+      pdf.addImage(thumbData, 'PNG', margin, y, thumbW, thumbH)
+
+      const tiledCanvas = renderExportCanvas(exportTile, {
+        requestedWidth: exportTile.width * 3,
+        requestedHeight: exportTile.height * 3,
+        tilesX: 3,
+        tilesY: 3,
+        repeatMode,
+        shiftPercent,
+        mirrorEnabled,
+        showGrid: false,
+        showHeatmap: false,
+        showProblemSeams: false,
+        seamAnalysis: null,
+        seamThresholdPercent: 0,
+      })
+
+      if (tiledCanvas) {
+        const tiledX = margin + thumbW + 8
+        const tiledMaxW = contentW - thumbW - 8
+        const tiledAspect = tiledCanvas.width / Math.max(1, tiledCanvas.height)
+        let tiledW = tiledMaxW
+        let tiledH = tiledW / tiledAspect
+        if (tiledH > thumbMaxH) { tiledH = thumbMaxH; tiledW = tiledH * tiledAspect }
+        pdf.rect(tiledX, y, tiledW, tiledH)
+        pdf.addImage(tiledCanvas.toDataURL('image/png'), 'PNG', tiledX, y, tiledW, tiledH)
+        pdf.setFontSize(7)
+        pdf.setFont('helvetica', 'normal')
+        pdf.text('3x3 repeat preview', tiledX, y + tiledH + 3.5)
+      }
+
+      y += thumbH + 12
+
+      pdf.setFont('helvetica', 'bold')
+      pdf.setFontSize(11)
+      pdf.text('Tile Specifications', margin, y)
+      y += 6
+
+      const dpi = exportTarget.dpi
+      const tileWcm = ((requestedBaseWidth / dpi) * 2.54).toFixed(2)
+      const tileHcm = ((requestedBaseHeight / dpi) * 2.54).toFixed(2)
+      const tileWin = (requestedBaseWidth / dpi).toFixed(2)
+      const tileHin = (requestedBaseHeight / dpi).toFixed(2)
+
+      const specs = [
+        ['Tile Size (px)', `${requestedBaseWidth} x ${requestedBaseHeight} px`],
+        ['Tile Size (cm)', `${tileWcm} x ${tileHcm} cm`],
+        ['Tile Size (in)', `${tileWin} x ${tileHin} in`],
+        ['DPI', `${dpi}`],
+        ['Repeat Mode', repeatMode],
+        ['Shift', `${shiftPercent}%`],
+      ]
+
+      pdf.setFont('helvetica', 'normal')
+      pdf.setFontSize(9)
+      for (const [label, value] of specs) {
+        pdf.setFont('helvetica', 'bold')
+        pdf.text(`${label}:`, margin, y)
+        pdf.setFont('helvetica', 'normal')
+        pdf.text(value, margin + 42, y)
+        y += 5
+      }
+
+      y += 4
+
+      if (palette.length > 0) {
+        pdf.setFont('helvetica', 'bold')
+        pdf.setFontSize(11)
+        pdf.text(`Color Palette (${palette.length} colors)`, margin, y)
+        y += 6
+
+        const swatchSize = 10
+        const gap = 3
+        let sx = margin
+        for (const c of palette) {
+          if (sx + swatchSize > pageW - margin) {
+            sx = margin
+            y += swatchSize + gap + 5
+          }
+          const r = c.r / 255
+          const g = c.g / 255
+          const b = c.b / 255
+          pdf.setFillColor(Math.round(r * 255), Math.round(g * 255), Math.round(b * 255))
+          pdf.rect(sx, y, swatchSize, swatchSize, 'F')
+          pdf.setDrawColor(180)
+          pdf.rect(sx, y, swatchSize, swatchSize, 'S')
+          pdf.setFont('helvetica', 'normal')
+          pdf.setFontSize(6.5)
+          pdf.setTextColor(60)
+          pdf.text(c.hex, sx + swatchSize / 2, y + swatchSize + 3.5, { align: 'center' })
+          pdf.text(`${c.percent}%`, sx + swatchSize / 2, y + swatchSize + 6.5, { align: 'center' })
+          pdf.setTextColor(0)
+          sx += swatchSize + gap + 6
+        }
+        y += swatchSize + 12
+      }
+
+      y += 4
+      pdf.setDrawColor(180)
+      pdf.line(margin, y, pageW - margin, y)
+      y += 5
+      pdf.setFontSize(7)
+      pdf.setTextColor(130)
+      pdf.text(`Generated by Seamless Pattern Designer PRO — ${new Date().toISOString().slice(0, 10)}`, margin, y)
+      pdf.setTextColor(0)
+
+      const stamp = formatTimestamp()
+      pdf.save(`spec-sheet_${requestedBaseWidth}x${requestedBaseHeight}_${stamp}.pdf`)
+    } catch {
+      window.alert(text.exportFail(0, 0))
+    }
+  }, [
+    resolveExportTile,
+    exportTarget,
+    mirrorEnabled,
+    palette,
+    repeatMode,
+    shiftPercent,
+    text,
+  ])
+
   // --- Canvas preview rendering ---
   useEffect(() => {
     const canvas = canvasRef.current
@@ -506,6 +671,53 @@ export function useCanvasEngine({
         }
       }
 
+      if (showDimensions && exportTarget.dpi > 0) {
+        const dpiVal = exportTarget.dpi
+        const firstTileX = originX
+        const firstTileY = originY
+        const tileCm = (n: number) => ((n / dpiVal) * 2.54).toFixed(1)
+        const lineW = 1.5 / viewport.scale
+        const fontSize = Math.max(10, 13 / viewport.scale)
+        const arrowLen = 6 / viewport.scale
+        const gap = 8 / viewport.scale
+
+        ctx.strokeStyle = '#745A86'
+        ctx.fillStyle = '#745A86'
+        ctx.lineWidth = lineW
+        ctx.font = `600 ${fontSize}px "Noto Sans TC", system-ui, sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+
+        const wLabel = `${tileCm(tileWidth)} cm`
+        const hLabel = `${tileCm(tileHeight)} cm`
+
+        const dimY = firstTileY - gap
+        ctx.beginPath()
+        ctx.moveTo(firstTileX, dimY)
+        ctx.lineTo(firstTileX + tileWidth, dimY)
+        ctx.moveTo(firstTileX, dimY - arrowLen)
+        ctx.lineTo(firstTileX, dimY + arrowLen)
+        ctx.moveTo(firstTileX + tileWidth, dimY - arrowLen)
+        ctx.lineTo(firstTileX + tileWidth, dimY + arrowLen)
+        ctx.stroke()
+        ctx.fillText(wLabel, firstTileX + tileWidth / 2, dimY - gap)
+
+        const dimX = firstTileX - gap
+        ctx.beginPath()
+        ctx.moveTo(dimX, firstTileY)
+        ctx.lineTo(dimX, firstTileY + tileHeight)
+        ctx.moveTo(dimX - arrowLen, firstTileY)
+        ctx.lineTo(dimX + arrowLen, firstTileY)
+        ctx.moveTo(dimX - arrowLen, firstTileY + tileHeight)
+        ctx.lineTo(dimX + arrowLen, firstTileY + tileHeight)
+        ctx.stroke()
+        ctx.save()
+        ctx.translate(dimX - gap, firstTileY + tileHeight / 2)
+        ctx.rotate(-Math.PI / 2)
+        ctx.fillText(hLabel, 0, 0)
+        ctx.restore()
+      }
+
       ctx.restore()
     }
 
@@ -514,10 +726,12 @@ export function useCanvasEngine({
   }, [
     canvasSize,
     drawTileCanvas,
+    exportTarget,
     mirrorEnabled,
     repeatMode,
     seamAnalysis,
     shiftPercent,
+    showDimensions,
     showGrid,
     showHeatmap,
     showProblemSeams,
@@ -536,7 +750,9 @@ export function useCanvasEngine({
     resetView,
     exportPNG,
     exportPDF,
+    exportSpecSheet,
     seamAnalysis,
+    palette,
     handlers,
   }
 }

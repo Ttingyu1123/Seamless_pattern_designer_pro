@@ -375,6 +375,49 @@ button:disabled {
   user-select: none;
 }
 
+.palette-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.palette-swatch {
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(0,0,0,0.15);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 2px;
+  transition: transform 0.1s;
+}
+
+.palette-swatch:hover {
+  transform: scale(1.12);
+}
+
+.swatch-label {
+  font-size: 0.55rem;
+  color: #fff;
+  text-shadow: 0 0 3px rgba(0,0,0,0.7);
+  line-height: 1;
+}
+
+.swatch-pct {
+  font-size: 0.5rem;
+  color: rgba(255,255,255,0.85);
+  text-shadow: 0 0 3px rgba(0,0,0,0.7);
+  line-height: 1;
+}
+
+.spec-sheet-btn {
+  grid-column: 1 / -1;
+}
+
 .toast {
   position: sticky;
   bottom: 64px;

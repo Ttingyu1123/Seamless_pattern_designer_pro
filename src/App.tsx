@@ -48,6 +48,7 @@ function App() {
   const [exportTilesX, setExportTilesX] = useState(6)
   const [exportUpscale, setExportUpscale] = useState(1)
   const [pdfBleed, setPdfBleed] = useState(false)
+  const [showDimensions, setShowDimensions] = useState(false)
 
   const repeatBase = useMemo(() => {
     if (!sourceImage) {
@@ -147,6 +148,7 @@ function App() {
     previewRepeatBase,
     exportRepeatBase: repeatBase,
     pdfBleed,
+    showDimensions,
     exportTarget: {
       widthPx: exportWidthPx,
       heightPx: exportHeightPx,
@@ -350,6 +352,10 @@ function App() {
         effectiveExportHeightPx={effectiveExportPx.height}
         exportQualityRatio={densityRatio}
         exportLimitRisk={exportLimitRisk}
+        palette={engine.palette}
+        showDimensions={showDimensions}
+        onShowDimensionsChange={setShowDimensions}
+        onExportSpecSheet={engine.exportSpecSheet}
         onUpload={handleUpload}
         onRepeatModeChange={setRepeatMode}
         onShiftChange={setShiftPercent}
