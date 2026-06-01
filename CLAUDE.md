@@ -27,6 +27,7 @@ src/
 │   └── composerStore.ts            # Zustand: layers, tile config, undo/redo (zundo)
 ├── utils/
 │   ├── constants.ts                # Shared constants
+│   ├── colorPalette.ts             # Hue-bucketed HSV k-means color extraction
 │   ├── composeExport.ts            # Compose: single tile + tiled image export
 │   ├── exportRenderer.ts           # Inspect: tiling render for PNG/PDF export
 │   ├── hitTest.ts                  # Point-in-rotated-rect, handle detection
@@ -68,6 +69,10 @@ src/
 - **Export:** Shared `renderExportCanvas()` used by both PNG and PDF paths
 - **DPI workflow:** Binary-parse source image DPI → preserve in export metadata
 - **Motif size control:** Set desired motif physical size (cm/in) → auto-calculate tile count
+- **PDF bleed:** Optional 3mm bleed with trim marks for professional print production
+- **Color palette:** Hue-bucketed HSV k-means extraction (8 semantic buckets), click-to-copy hex
+- **Dimension overlay:** Toggle to show tile physical size (cm) with measurement lines on canvas
+- **Spec sheet PDF:** One-page A4 with tile thumbnail, 3x3 repeat preview, full specs, color palette
 
 ## Repeat Modes (tilingEngine.ts)
 
