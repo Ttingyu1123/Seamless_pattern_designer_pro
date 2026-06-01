@@ -338,7 +338,6 @@ export function ComposeCanvas({ lang }: Props) {
           onChange={(e) => {
             if (e.target.files) {
               const files = e.target.files
-              const view = getViewState()
               for (const file of Array.from(files)) {
                 if (!file.type.startsWith('image/')) continue
                 readFileAsDataUrl(file).then(dataUrl =>
