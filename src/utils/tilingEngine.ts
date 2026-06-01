@@ -64,13 +64,13 @@ export function getTileOffset({
   return { offsetX: 0, offsetY: 0 }
 }
 
-export function shouldFlipX(row: number, col: number, repeatMode: RepeatMode): boolean {
+export function shouldFlipX(_row: number, col: number, repeatMode: RepeatMode): boolean {
   if (repeatMode === 'mirror-x') return Math.abs(col) % 2 === 1
   if (repeatMode === 'mirror-xy') return Math.abs(col) % 2 === 1
   return false
 }
 
-export function shouldFlipY(row: number, col: number, repeatMode: RepeatMode): boolean {
+export function shouldFlipY(row: number, _col: number, repeatMode: RepeatMode): boolean {
   if (repeatMode === 'mirror-y') return Math.abs(row) % 2 === 1
   if (repeatMode === 'mirror-xy') return Math.abs(row) % 2 === 1
   return false
