@@ -16,7 +16,7 @@ src/
 │   ├── HeatmapOverlay.tsx          # Seam quality display
 │   ├── ComposeCanvas.tsx           # Compose: edit canvas (drag-drop, pointer interaction)
 │   ├── ComposePanel.tsx            # Compose: left sidebar (layers, export, save/load)
-│   ├── ComposeTileConfig.tsx       # Compose: tile size config (px/mm, presets, background)
+│   ├── ComposeTileConfig.tsx       # Compose: tile size config (px/mm/cm, print calculator, presets)
 │   ├── RepeatPreview.tsx           # Compose: right-side tiled preview
 │   └── ScatterDialog.tsx           # Compose: Poisson Disk scatter settings
 ├── hooks/
@@ -59,12 +59,15 @@ src/
 - **Interaction:** Figma-style handles (body=move, corner=scale, top-circle=rotate)
 - **Image cache:** Global `Map<layerId, HTMLImageElement>`, auto-loads on duplicate/open
 - **Export:** Single tile PNG + tiled repeat PNG
+- **Print Size Calculator:** Physical size (cm/mm/in) + DPI → pixel canvas size; print presets (5/10/15/20cm @300dpi)
+- **Tile units:** px, mm, cm — physical units show DPI and auto-convert; px mode shows cm equivalent hint
 
 ### Inspect Mode
 - **Rendering:** requestAnimationFrame loop in useCanvasEngine
 - **Gestures:** Extracted to useGestureHandlers (pan, pinch zoom, wheel zoom)
 - **Export:** Shared `renderExportCanvas()` used by both PNG and PDF paths
 - **DPI workflow:** Binary-parse source image DPI → preserve in export metadata
+- **Motif size control:** Set desired motif physical size (cm/in) → auto-calculate tile count
 
 ## Repeat Modes (tilingEngine.ts)
 
