@@ -2,42 +2,73 @@
 
 ## Overview
 
-Client-side React SPA for inspecting and exporting seamless tile patterns. No backend. Deployed via GitHub Pages (`docs/` folder).
+Client-side React SPA with dual-mode workflow: **Compose**（組合 motif → 建立 tile）and **Inspect**（檢視既有 tile → 預覽重複 → 匯出）. No backend. Deployed via GitHub Pages (`docs/` folder).
 
-**Stack:** React 19 + TypeScript 5.9 + Vite 7 + HTML5 Canvas API + jsPDF
+**Stack:** React 19 + TypeScript 5.9 + Vite 7 + HTML5 Canvas API + Zustand 5 + jsPDF
 
 ## Project Structure
 
 ```
 src/
 ├── components/
-│   ├── CanvasView.tsx              # Canvas container (thin wrapper)
-│   ├── ControlPanel.tsx            # All UI controls, wrapped with React.memo
-│   └── HeatmapOverlay.tsx          # Seam quality display
+│   ├── CanvasView.tsx              # Canvas container (thin wrapper, inspect mode)
+│   ├── ControlPanel.tsx            # Inspect mode UI controls
+│   ├── HeatmapOverlay.tsx          # Seam quality display
+│   ├── ComposeCanvas.tsx           # Compose: edit canvas (drag-drop, pointer interaction)
+│   ├── ComposePanel.tsx            # Compose: left sidebar (layers, export, save/load)
+│   ├── ComposeTileConfig.tsx       # Compose: tile size config (px/mm, presets, background)
+│   ├── RepeatPreview.tsx           # Compose: right-side tiled preview
+│   └── ScatterDialog.tsx           # Compose: Poisson Disk scatter settings
 ├── hooks/
-│   ├── useCanvasEngine.ts          # Orchestrator: tile memos, viewport, rendering, export
+│   ├── useCanvasEngine.ts          # Inspect: tile memos, viewport, rendering, export
+│   ├── useComposerEngine.ts        # Compose: edit canvas render loop, image cache
 │   └── useGestureHandlers.ts       # Pointer/touch/wheel gesture handling
+├── store/
+│   └── composerStore.ts            # Zustand: layers, tile config, undo/redo (zundo)
 ├── utils/
-│   ├── constants.ts                # Shared constants (export limits, upload limits, panel sizes)
-│   ├── exportRenderer.ts           # Shared tiling render logic for PNG/PDF export
+│   ├── constants.ts                # Shared constants
+│   ├── composeExport.ts            # Compose: single tile + tiled image export
+│   ├── exportRenderer.ts           # Inspect: tiling render for PNG/PDF export
+│   ├── hitTest.ts                  # Point-in-rotated-rect, handle detection
 │   ├── imageMetadata.ts            # PNG/JPEG DPI binary parsing
+│   ├── layerRenderer.ts            # flattenComposedTile() with lattice wrap-around
+│   ├── projectFile.ts              # .spc JSON save/load + localStorage autosave
+│   ├── scatterEngine.ts            # Poisson Disk Sampling auto-scatter
 │   ├── seamDetector.ts             # Edge difference heatmap
-│   └── tilingEngine.ts             # Grid/Half-drop/Mirror tile math
-├── App.tsx                         # State orchestration, upload handling with validation
+│   ├── snapEngine.ts               # Smart Snap alignment (center/edge/motif)
+│   └── tilingEngine.ts             # 10 repeat modes: grid, half-drop, mirror, hex, diamond
+├── App.tsx                         # Dual-mode shell (compose/inspect)
 ├── App.css                         # All component styles
-├── i18n.ts                         # EN/ZH translations
+├── i18n.ts                         # Inspect mode EN/ZH translations
+├── i18n-compose.ts                 # Compose mode EN/ZH translations
 └── main.tsx                        # Entry point
 ```
 
 ## Key Architecture
 
-- **State:** All in App.tsx via useState (no Redux/Context)
+### Dual Mode
+- **Compose:** Zustand store (`composerStore.ts`) manages layers, tile size, repeat mode
+- **Inspect:** All state in App.tsx via useState (original architecture)
+- Mode switch via top nav tabs; both modes share `tilingEngine.ts`
+
+### Compose Mode
+- **State:** Zustand 5 with individual `(s) => s.field` selectors (React 19 compatible)
+- **Undo/Redo:** zundo temporal middleware, 50-step history, Ctrl+Z/Y
+- **Rendering:** Split view — left=edit canvas, right=tiled preview
+- **Wrap-around:** Lattice vector math for correct half-drop/hexagonal/diamond seamless tiling
+- **Interaction:** Figma-style handles (body=move, corner=scale, top-circle=rotate)
+- **Image cache:** Global `Map<layerId, HTMLImageElement>`, auto-loads on duplicate/open
+- **Export:** Single tile PNG + tiled repeat PNG
+
+### Inspect Mode
 - **Rendering:** requestAnimationFrame loop in useCanvasEngine
 - **Gestures:** Extracted to useGestureHandlers (pan, pinch zoom, wheel zoom)
 - **Export:** Shared `renderExportCanvas()` used by both PNG and PDF paths
-- **Constants:** Single source of truth in `utils/constants.ts`
 - **DPI workflow:** Binary-parse source image DPI → preserve in export metadata
-- **Upload validation:** File type (PNG/JPEG only) and size (50 MB max) checked before processing
+
+## Repeat Modes (tilingEngine.ts)
+
+`grid | half-drop-row | half-drop-column | half-brick | mirror-x | mirror-y | mirror-xy | hexagonal | diamond | horizontal-only`
 
 ## Build & Deploy
 
@@ -53,8 +84,10 @@ GitHub Pages serves from `docs/` — copy `dist/` to `docs/` for deploy.
 
 ## Conventions
 
-- **i18n:** All UI strings go through `i18n.ts`, keyed by `en`/`zh`
-- **Repeat modes:** `'grid' | 'half-drop-row' | 'half-drop-column'` — see `tilingEngine.ts`
-- **Keyboard shortcuts:** P=preview toggle, E=export PNG, R=reset view
+- **i18n:** UI strings in `i18n.ts` (inspect) and `i18n-compose.ts` (compose), keyed by `en`/`zh`
+- **Zustand selectors:** Always use `(s) => s.field` pattern, never destructure (React 19 batching)
+- **Keyboard shortcuts (Compose):** Delete=remove layer, Ctrl+D=duplicate, Ctrl+Z/Y=undo/redo
+- **Keyboard shortcuts (Inspect):** P=preview toggle, E=export PNG, R=reset view
 - **Export filename format:** `seamless-pattern_{WxH}px_{DPI}dpi_{timestamp}.{ext}`
-- **React Compiler:** ESLint uses `react-hooks/recommended` with Compiler rules; use full objects (not `.property`) in dependency arrays
+- **Project file:** `.spc` = JSON with base64 embedded images
+- **Lattice wrap-around:** `getLatticeVectors()` defines periodicity per repeat mode; wrap offsets enumerate lattice points n×v1 + m×v2
