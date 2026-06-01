@@ -2,6 +2,7 @@ import type { MotifLayer } from '../store/composerStore'
 import type { RepeatMode } from './tilingEngine'
 import { getTileOffset, shouldFlipX, shouldFlipY } from './tilingEngine'
 import { flattenComposedTile } from './layerRenderer'
+import { saveCanvasImage } from './saveImage'
 
 export function exportSingleTile(
   layers: MotifLayer[],
@@ -13,7 +14,7 @@ export function exportSingleTile(
   shiftPercent: number = 50,
 ) {
   const tile = flattenComposedTile(layers, tileWidth, tileHeight, backgroundColor, imageCache, repeatMode, shiftPercent)
-  downloadCanvas(tile, `tile_${tileWidth}x${tileHeight}`)
+  saveCanvasImage(tile, `tile_${tileWidth}x${tileHeight}_${Date.now()}.png`)
 }
 
 export function exportTiledImage(
@@ -85,12 +86,5 @@ export function exportTiledImage(
 
   const totalW = tileW * tilesX
   const totalH = tileH * tilesY
-  downloadCanvas(canvas, `tiled_${totalW}x${totalH}_${repeatMode}`)
-}
-
-function downloadCanvas(canvas: HTMLCanvasElement, name: string) {
-  const link = document.createElement('a')
-  link.download = `${name}_${Date.now()}.png`
-  link.href = canvas.toDataURL('image/png')
-  link.click()
+  saveCanvasImage(canvas, `tiled_${totalW}x${totalH}_${repeatMode}_${Date.now()}.png`)
 }

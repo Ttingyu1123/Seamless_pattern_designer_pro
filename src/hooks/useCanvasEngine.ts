@@ -27,6 +27,7 @@ import {
   type Viewport,
 } from './useGestureHandlers'
 import { renderExportCanvas, safeExportSize } from '../utils/exportRenderer'
+import { saveBlobImage } from '../utils/saveImage'
 
 interface CanvasSize {
   width: number
@@ -258,18 +259,14 @@ export function useCanvasEngine({
 
     if (!exportCanvas) return
 
-    exportCanvas.toBlob((blob) => {
+    exportCanvas.toBlob(async (blob) => {
       if (!blob) {
         window.alert(text.exportFail(target.width, target.height))
         return
       }
 
-      const blobUrl = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.download = buildExportFilename('png', requestedBaseWidth, requestedBaseHeight, exportTarget.dpi)
-      link.href = blobUrl
-      link.click()
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 0)
+      const filename = buildExportFilename('png', requestedBaseWidth, requestedBaseHeight, exportTarget.dpi)
+      await saveBlobImage(blob, filename)
 
       if (target.scaled) {
         window.alert(
