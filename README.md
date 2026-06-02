@@ -1,4 +1,51 @@
-﻿# Seamless Pattern Designer PRO
+# Seamless Pattern Designer PRO
+
+Open-source, browser-based tool for validating seamless repeat patterns before print or marketplace delivery.
+
+Seamless Pattern Designer PRO helps pattern designers, AI artists, and textile creators inspect repeat tiles, detect visible seams, preview multiple repeat systems, and export print-ready PNG/PDF assets. It runs fully in the browser with no backend, so uploaded artwork stays local to the user's device.
+
+## Why this project matters
+
+AI image generators can create strong pattern concepts, but generated tiles often contain subtle edge mismatches, resolution issues, or repeat artifacts that only appear after tiling. This project provides an open-source quality-control step for that workflow:
+
+- Visual seam inspection with heatmap and problem-seam overlays.
+- Repeat previews for grid, half-drop row, half-drop column, mirror, and offset inspection.
+- Print-oriented export settings with DPI, page size, and tile count controls.
+- Local-first execution for artists who do not want to upload source artwork to a server.
+
+## Project status
+
+This is an actively maintained frontend OSS project built with Vite, React, TypeScript, and the Canvas API. The near-term roadmap is focused on improving accessibility, export reliability, contributor documentation, and automated validation for image-processing behavior.
+
+## English quick start
+
+```bash
+npm install
+npm run dev
+```
+
+Default local URL:
+
+```text
+http://localhost:5173/
+```
+
+Build and lint:
+
+```bash
+npm run lint
+npm run build
+```
+
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, development workflow, and the kinds of changes that are most useful for the project.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+## 中文說明
 
 專業的 seamless pattern 檢查與輸出工具，完全前端執行（無後端）。
 
