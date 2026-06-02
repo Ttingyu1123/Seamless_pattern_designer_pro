@@ -21,7 +21,7 @@ export function ScatterDialog({ lang, sourceLayer, onClose }: Props) {
   const [rotMax, setRotMax] = useState(360)
   const [scaleMin, setScaleMin] = useState(0.7)
   const [scaleMax, setScaleMax] = useState(1.3)
-  const [seed, setSeed] = useState(Math.floor(Math.random() * 10000))
+  const [seed, setSeed] = useState(() => Math.floor(Math.random() * 10000))
 
   const handleApply = async () => {
     const positions = generateScatterPositions(

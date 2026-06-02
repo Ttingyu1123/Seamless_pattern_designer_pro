@@ -39,31 +39,38 @@ export function ComposeCanvas({ lang }: Props) {
   const duplicateLayer = useComposerStore((s) => s.duplicateLayer)
   const setActiveSnapLines = useComposerStore((s) => s.setActiveSnapLines)
 
-  // Auto-save (debounced)
+  // Auto-save on any store change (debounced)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const s = useComposerStore.getState()
-      if (s.layers.length > 0) {
-        autoSave({
-          tileSizePx: s.tileSizePx,
-          tileSizeUnit: s.tileSizeUnit,
-          tileDpi: s.tileDpi,
-          aspectLocked: s.aspectLocked,
-          backgroundColor: s.backgroundColor,
-          repeatMode: s.repeatMode,
-          shiftPercent: s.shiftPercent,
-          tileDirection: s.tileDirection,
-          showGuides: s.showGuides,
-          guideType: s.guideType,
-          snapEnabled: s.snapEnabled,
-          previewTilesX: s.previewTilesX,
-          previewTilesY: s.previewTilesY,
-          layers: s.layers,
-        })
-      }
-    }, 2000)
-    return () => clearTimeout(timer)
-  }, [layers, tileSizePx])
+    let timer: ReturnType<typeof setTimeout>
+    const unsub = useComposerStore.subscribe(() => {
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        const s = useComposerStore.getState()
+        if (s.layers.length > 0) {
+          autoSave({
+            tileSizePx: s.tileSizePx,
+            tileSizeUnit: s.tileSizeUnit,
+            tileDpi: s.tileDpi,
+            aspectLocked: s.aspectLocked,
+            backgroundColor: s.backgroundColor,
+            repeatMode: s.repeatMode,
+            shiftPercent: s.shiftPercent,
+            tileDirection: s.tileDirection,
+            showGuides: s.showGuides,
+            guideType: s.guideType,
+            snapEnabled: s.snapEnabled,
+            previewTilesX: s.previewTilesX,
+            previewTilesY: s.previewTilesY,
+            layers: s.layers,
+          })
+        }
+      }, 2000)
+    })
+    return () => {
+      unsub()
+      clearTimeout(timer)
+    }
+  }, [])
 
   // Prevent browser touch gestures (scroll/zoom) on the canvas area
   useEffect(() => {
@@ -216,6 +223,7 @@ export function ComposeCanvas({ lang }: Props) {
               rotation: selectedLayer.rotation,
             },
           }
+          useComposerStore.temporal.getState().pause()
           ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
           return
         }
@@ -241,6 +249,7 @@ export function ComposeCanvas({ lang }: Props) {
             rotation: layer.rotation,
           },
         }
+        useComposerStore.temporal.getState().pause()
         ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
         return
       }
@@ -305,12 +314,13 @@ export function ComposeCanvas({ lang }: Props) {
         scaleY: snap.scaleY * ratio,
       })
     }
-  }, [selectedLayerId, updateLayer, getViewState, containerRef, layers, tileSizePx, snapEnabled])
+  }, [selectedLayerId, updateLayer, getViewState, containerRef, layers, tileSizePx, snapEnabled, setActiveSnapLines])
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     if (dragState.current) {
       dragState.current = null
       setActiveSnapLines([], [])
+      useComposerStore.temporal.getState().resume()
       ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
     }
   }, [setActiveSnapLines])

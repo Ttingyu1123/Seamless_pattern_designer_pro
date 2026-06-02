@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useComposerStore } from '../store/composerStore'
 import type { MotifLayer } from '../store/composerStore'
 import { getLatticeVectors } from '../utils/layerRenderer'
+import type { RepeatMode } from '../utils/tilingEngine'
 
 const CHECKER_SIZE = 12
 
@@ -192,6 +193,12 @@ export function useComposerEngine() {
 
   useEffect(() => {
     let loaded = false
+    const currentIds = new Set(layers.map(l => l.id))
+    for (const cachedId of layerImageCache.keys()) {
+      if (!currentIds.has(cachedId)) {
+        layerImageCache.delete(cachedId)
+      }
+    }
     for (const layer of layers) {
       if (!layerImageCache.has(layer.id) && layer.imageDataUrl) {
         loadLayerImage(layer).then(() => {
@@ -216,10 +223,10 @@ function getWrapOffsets(
   layer: MotifLayer,
   tileW: number,
   tileH: number,
-  repeatMode: string,
+  repeatMode: RepeatMode,
   shiftPercent: number,
 ): Array<[number, number]> {
-  const { v1, v2 } = getLatticeVectors(tileW, tileH, repeatMode as any, shiftPercent)
+  const { v1, v2 } = getLatticeVectors(tileW, tileH, repeatMode, shiftPercent)
 
   const halfW = (layer.naturalWidth * Math.abs(layer.scaleX)) / 2
   const halfH = (layer.naturalHeight * Math.abs(layer.scaleY)) / 2
