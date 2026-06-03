@@ -28,88 +28,134 @@ export function drawTessellation(
   }
 }
 
+function mod(n: number, m: number): number {
+  return ((n % m) + m) % m
+}
+
+function lcm(a: number, b: number): number {
+  const gcd = (x: number, y: number): number => (y === 0 ? x : gcd(y, x % y))
+  return (a * b) / gcd(a, b)
+}
+
+function snapToMultiple(value: number, multiple: number, min: number): number {
+  return Math.max(min, Math.round(value / multiple) * multiple)
+}
+
+function drawHexAt(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number, r: number, rY: number,
+  fillStyle: string, strokeStyle: string, lineWidth: number,
+) {
+  ctx.fillStyle = fillStyle
+  ctx.strokeStyle = strokeStyle
+  ctx.lineWidth = lineWidth
+  ctx.beginPath()
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 6
+    const px = cx + r * Math.cos(angle)
+    const py = cy + rY * Math.sin(angle)
+    if (i === 0) ctx.moveTo(px, py)
+    else ctx.lineTo(px, py)
+  }
+  ctx.closePath()
+  ctx.fill()
+  ctx.stroke()
+}
+
+// ── Square ──
+
 function drawSquareTessellation(
   ctx: CanvasRenderingContext2D, w: number, h: number,
   config: TessellationConfig,
 ) {
-  const cellSize = Math.min(w, h) / Math.max(2, config.scale)
+  const N = config.fillColors.length
+  const cols = snapToMultiple(Math.max(2, config.scale), N, N)
+  const cellW = w / cols
+  const rows = snapToMultiple(Math.max(1, Math.round(h / cellW)), N, N)
+  const cellH = h / rows
   const { strokeWidth, strokeColor, fillColors } = config
 
-  for (let row = -1; row * cellSize < h + cellSize; row++) {
-    for (let col = -1; col * cellSize < w + cellSize; col++) {
-      const x = col * cellSize
-      const y = row * cellSize
-      ctx.fillStyle = fillColors[((col % 2 + 2) % 2 + (row % 2 + 2) % 2) % fillColors.length]
-      ctx.fillRect(x, y, cellSize, cellSize)
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      ctx.fillStyle = fillColors[mod(col + row, N)]
+      ctx.fillRect(col * cellW, row * cellH, cellW + 0.5, cellH + 0.5)
       ctx.strokeStyle = strokeColor
       ctx.lineWidth = strokeWidth
-      ctx.strokeRect(x, y, cellSize, cellSize)
+      ctx.strokeRect(col * cellW, row * cellH, cellW, cellH)
     }
   }
 }
+
+// ── Hexagonal ──
 
 function drawHexTessellation(
   ctx: CanvasRenderingContext2D, w: number, h: number,
   config: TessellationConfig,
 ) {
-  const r = Math.min(w, h) / (Math.max(2, config.scale) * 2)
   const { strokeWidth, strokeColor, fillColors } = config
-  const hexW = Math.sqrt(3) * r
-  const hexH = 2 * r
+  const N = fillColors.length
 
-  let colorIdx = 0
-  for (let row = -2; row * (hexH * 0.75) < h + hexH; row++) {
-    for (let col = -2; col * hexW < w + hexW; col++) {
-      const cx = col * hexW + (row % 2 === 0 ? 0 : hexW / 2)
-      const cy = row * (hexH * 0.75)
+  // colCount must be multiple of N so column-based coloring wraps
+  const colCount = snapToMultiple(Math.max(2, config.scale), N, N)
+  const hexW = w / colCount
+  const r = hexW / Math.sqrt(3)
 
-      ctx.fillStyle = fillColors[colorIdx % fillColors.length]
-      ctx.strokeStyle = strokeColor
-      ctx.lineWidth = strokeWidth
+  // totalRows must be even (hex grid) AND multiple of N
+  const period = lcm(2, N)
+  const naturalPairs = h / (3 * r)
+  const totalRows = snapToMultiple(Math.max(1, Math.round(naturalPairs)) * 2, period, period)
+  const rowSpacing = h / totalRows
+  const rY = rowSpacing / 1.5
 
-      ctx.beginPath()
-      for (let i = 0; i < 6; i++) {
-        const angle = (Math.PI / 3) * i - Math.PI / 6
-        const px = cx + r * Math.cos(angle)
-        const py = cy + r * Math.sin(angle)
-        if (i === 0) ctx.moveTo(px, py)
-        else ctx.lineTo(px, py)
-      }
-      ctx.closePath()
-      ctx.fill()
-      ctx.stroke()
-      colorIdx++
+  for (let row = -1; row <= totalRows; row++) {
+    const isOddRow = mod(row, 2) === 1
+    for (let col = -1; col <= colCount; col++) {
+      const cx = col * hexW + (isOddRow ? hexW / 2 : 0)
+      const cy = row * rowSpacing
+
+      // Seamless color: mod(canonicalRow + canonicalCol, N)
+      const cr = mod(row, totalRows)
+      const cc = mod(col, colCount)
+      const colorIdx = mod(cr + cc, N)
+
+      drawHexAt(ctx, cx, cy, r, rY, fillColors[colorIdx], strokeColor, strokeWidth)
     }
   }
 }
+
+// ── Triangular ──
 
 function drawTriangleTessellation(
   ctx: CanvasRenderingContext2D, w: number, h: number,
   config: TessellationConfig,
 ) {
-  const cellSize = Math.min(w, h) / Math.max(2, config.scale)
-  const triH = cellSize * Math.sqrt(3) / 2
   const { strokeWidth, strokeColor, fillColors } = config
+  const N = fillColors.length
+  const cols = snapToMultiple(Math.max(2, config.scale) * 2, N, N)
+  const halfW = w / cols
+  const naturalRows = h / (halfW * Math.sqrt(3))
+  const rows = snapToMultiple(Math.max(1, Math.round(naturalRows)), N, N)
+  const triH = h / rows
 
-  for (let row = -1; row * triH < h + triH; row++) {
-    for (let col = -2; (col * cellSize / 2) < w + cellSize; col++) {
-      const x0 = col * (cellSize / 2)
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const x0 = col * halfW
       const y0 = row * triH
-      const up = (row + col) % 2 === 0
+      const up = mod(row + col, 2) === 0
 
-      ctx.fillStyle = fillColors[up ? 0 : 1 % fillColors.length]
+      ctx.fillStyle = fillColors[mod(row + col, N)]
       ctx.strokeStyle = strokeColor
       ctx.lineWidth = strokeWidth
 
       ctx.beginPath()
       if (up) {
         ctx.moveTo(x0, y0 + triH)
-        ctx.lineTo(x0 + cellSize / 2, y0)
-        ctx.lineTo(x0 + cellSize, y0 + triH)
+        ctx.lineTo(x0 + halfW, y0)
+        ctx.lineTo(x0 + halfW * 2, y0 + triH)
       } else {
         ctx.moveTo(x0, y0)
-        ctx.lineTo(x0 + cellSize, y0)
-        ctx.lineTo(x0 + cellSize / 2, y0 + triH)
+        ctx.lineTo(x0 + halfW * 2, y0)
+        ctx.lineTo(x0 + halfW, y0 + triH)
       }
       ctx.closePath()
       ctx.fill()
@@ -117,50 +163,56 @@ function drawTriangleTessellation(
     }
   }
 }
+
+// ── 3.6.3.6 (Trihexagonal) ──
 
 function drawTriHexTessellation(
   ctx: CanvasRenderingContext2D, w: number, h: number,
   config: TessellationConfig,
 ) {
-  const r = Math.min(w, h) / (Math.max(2, config.scale) * 2)
   const { strokeWidth, strokeColor, fillColors } = config
-  const hexW = Math.sqrt(3) * r
-  const hexH = 2 * r
+  const N = fillColors.length
+  const colCount = snapToMultiple(Math.max(2, config.scale), N, N)
+  const hexW = w / colCount
+  const r = hexW / Math.sqrt(3)
 
-  for (let row = -2; row * (hexH * 0.75) < h + hexH; row++) {
-    for (let col = -2; col * hexW < w + hexW; col++) {
-      const cx = col * hexW + (row % 2 === 0 ? 0 : hexW / 2)
-      const cy = row * (hexH * 0.75)
+  const period = lcm(2, N)
+  const naturalPairs = h / (3 * r)
+  const totalRows = snapToMultiple(Math.max(1, Math.round(naturalPairs)) * 2, period, period)
+  const rowSpacing = h / totalRows
+  const rY = rowSpacing / 1.5
 
-      // Hexagon
-      const hexVerts: { x: number; y: number }[] = []
-      ctx.fillStyle = fillColors[0]
-      ctx.strokeStyle = strokeColor
-      ctx.lineWidth = strokeWidth
-      ctx.beginPath()
+  const innerScale = 0.7
+  const rInner = r * innerScale
+  const rYInner = rY * innerScale
+
+  for (let row = -1; row <= totalRows; row++) {
+    const isOddRow = mod(row, 2) === 1
+    for (let col = -1; col <= colCount; col++) {
+      const cx = col * hexW + (isOddRow ? hexW / 2 : 0)
+      const cy = row * rowSpacing
+
+      drawHexAt(ctx, cx, cy, rInner, rYInner, fillColors[0], strokeColor, strokeWidth)
+
       for (let i = 0; i < 6; i++) {
         const angle = (Math.PI / 3) * i - Math.PI / 6
-        const px = cx + r * 0.7 * Math.cos(angle)
-        const py = cy + r * 0.7 * Math.sin(angle)
-        hexVerts.push({ x: px, y: py })
-        if (i === 0) ctx.moveTo(px, py)
-        else ctx.lineTo(px, py)
-      }
-      ctx.closePath()
-      ctx.fill()
-      ctx.stroke()
+        const nextAngle = (Math.PI / 3) * ((i + 1) % 6) - Math.PI / 6
+        const tipAngle = (angle + nextAngle) / 2
 
-      // Triangles between hexagons
-      for (let i = 0; i < 6; i++) {
-        const outerAngle = (Math.PI / 3) * i - Math.PI / 6
-        const tipX = cx + r * Math.cos(outerAngle)
-        const tipY = cy + r * Math.sin(outerAngle)
+        const ix = cx + rInner * Math.cos(angle)
+        const iy = cy + rYInner * Math.sin(angle)
+        const inx = cx + rInner * Math.cos(nextAngle)
+        const iny = cy + rYInner * Math.sin(nextAngle)
+        const tx = cx + r * Math.cos(tipAngle)
+        const ty = cy + rY * Math.sin(tipAngle)
 
-        ctx.fillStyle = fillColors[(i + 1) % fillColors.length]
+        ctx.fillStyle = fillColors[(i + 1) % N]
+        ctx.strokeStyle = strokeColor
+        ctx.lineWidth = strokeWidth
         ctx.beginPath()
-        ctx.moveTo(hexVerts[i].x, hexVerts[i].y)
-        ctx.lineTo(hexVerts[(i + 1) % 6].x, hexVerts[(i + 1) % 6].y)
-        ctx.lineTo(tipX, tipY)
+        ctx.moveTo(ix, iy)
+        ctx.lineTo(inx, iny)
+        ctx.lineTo(tx, ty)
         ctx.closePath()
         ctx.fill()
         ctx.stroke()
@@ -169,52 +221,51 @@ function drawTriHexTessellation(
   }
 }
 
+// ── 3.3.4.3.4 (Snub Square) ──
+
 function drawSnubSquareTessellation(
   ctx: CanvasRenderingContext2D, w: number, h: number,
   config: TessellationConfig,
 ) {
-  const cellSize = Math.min(w, h) / Math.max(2, config.scale)
+  const N = config.fillColors.length
+  const cols = snapToMultiple(Math.max(2, config.scale), lcm(2, N), lcm(2, N))
+  const cellW = w / cols
+  const rows = snapToMultiple(Math.max(1, Math.round(h / cellW)), lcm(2, N), lcm(2, N))
+  const cellH = h / rows
   const { strokeWidth, strokeColor, fillColors } = config
-  const s = cellSize
-  const triOffset = s * 0.28
+  const triOff = cellW * 0.22
 
-  for (let row = -1; row * s < h + s; row++) {
-    for (let col = -1; col * s < w + s; col++) {
-      const x = col * s
-      const y = row * s
-      const rotated = (row + col) % 2 !== 0
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const x = col * cellW
+      const y = row * cellH
+      const rotated = mod(row + col, 2) !== 0
 
-      // Square
-      ctx.fillStyle = fillColors[0]
       ctx.strokeStyle = strokeColor
       ctx.lineWidth = strokeWidth
 
       if (rotated) {
         ctx.save()
-        ctx.translate(x + s / 2, y + s / 2)
+        ctx.translate(x + cellW / 2, y + cellH / 2)
         ctx.rotate(Math.PI / 6)
-        ctx.fillRect(-s * 0.35, -s * 0.35, s * 0.7, s * 0.7)
-        ctx.strokeRect(-s * 0.35, -s * 0.35, s * 0.7, s * 0.7)
+        ctx.fillStyle = fillColors[2 % N]
+        ctx.fillRect(-cellW * 0.3, -cellH * 0.3, cellW * 0.6, cellH * 0.6)
+        ctx.strokeRect(-cellW * 0.3, -cellH * 0.3, cellW * 0.6, cellH * 0.6)
         ctx.restore()
       } else {
-        ctx.fillRect(x + triOffset, y + triOffset, s - triOffset * 2, s - triOffset * 2)
-        ctx.strokeRect(x + triOffset, y + triOffset, s - triOffset * 2, s - triOffset * 2)
+        ctx.fillStyle = fillColors[0]
+        ctx.fillRect(x + triOff, y + triOff, cellW - triOff * 2, cellH - triOff * 2)
+        ctx.strokeRect(x + triOff, y + triOff, cellW - triOff * 2, cellH - triOff * 2)
       }
 
-      // Corner triangles
-      ctx.fillStyle = fillColors[1 % fillColors.length]
-      const corners = [
-        [x, y], [x + s, y], [x + s, y + s], [x, y + s],
-      ]
-      for (const [cx, cy] of corners) {
-        ctx.beginPath()
-        ctx.moveTo(cx, cy)
-        ctx.lineTo(cx + (cx === x ? triOffset : -triOffset), cy)
-        ctx.lineTo(cx, cy + (cy === y ? triOffset : -triOffset))
-        ctx.closePath()
-        ctx.fill()
-        ctx.stroke()
-      }
+      ctx.fillStyle = fillColors[1 % N]
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+      ctx.lineTo(x + triOff, y)
+      ctx.lineTo(x, y + triOff)
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
     }
   }
 }

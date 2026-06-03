@@ -1,13 +1,10 @@
 import type { IslamicStarConfig } from '../../store/generateStore'
 import {
   type Point,
-  regularPolygonVertices,
   midpoint,
   normalize,
   rotateVec,
   lineIntersection,
-  generateHexGrid,
-  generateSquareGrid,
   drawPolygon,
 } from './geometryHelpers'
 
@@ -19,13 +16,22 @@ interface StarGeometry {
 function computeStarGeometry(
   center: Point,
   radius: number,
+  radiusY: number,
   n: number,
   angleParam: number,
 ): StarGeometry {
   const maxTheta = Math.PI / 2 - Math.PI / n
   const theta = angleParam * maxTheta * 0.95
 
-  const vertices = regularPolygonVertices(center, radius, n)
+  const vertices: Point[] = []
+  for (let i = 0; i < n; i++) {
+    const angle = -Math.PI / 2 + (2 * Math.PI * i) / n
+    vertices.push({
+      x: center.x + radius * Math.cos(angle),
+      y: center.y + radiusY * Math.sin(angle),
+    })
+  }
+
   const midpoints: Point[] = []
   for (let i = 0; i < n; i++) {
     midpoints.push(midpoint(vertices[i], vertices[(i + 1) % n]))
@@ -93,63 +99,106 @@ export function drawIslamicStar(
   const isHex = points === 6 || points === 12
   const cellsAcross = Math.max(1, scale)
 
-  let centers: Point[]
-  let cellRadius: number
+  let colCount: number
+  let dx: number
+  let dy: number
+  let totalRows: number
+  let polyRadius: number
+  let polyRadiusY: number
 
   if (isHex) {
-    cellRadius = w / (cellsAcross * Math.sqrt(3))
-    centers = generateHexGrid(w, h, cellRadius)
+    colCount = cellsAcross
+    dx = w / colCount
+    const r = dx / Math.sqrt(3)
+    const naturalPairs = h / (3 * r)
+    const rowPairs = Math.max(1, Math.round(naturalPairs))
+    totalRows = rowPairs * 2
+    dy = h / totalRows
+    polyRadius = r * 0.98
+    polyRadiusY = (dy / 1.5) * 0.98
   } else {
-    cellRadius = w / (cellsAcross * 2)
-    centers = generateSquareGrid(w, h, cellRadius * 2)
+    colCount = cellsAcross
+    dx = w / colCount
+    const naturalRows = h / dx
+    const rows = Math.max(1, Math.round(naturalRows))
+    totalRows = rows
+    dy = h / rows
+    polyRadius = dx * 0.48
+    polyRadiusY = dy * 0.48
   }
 
-  const polyRadius = isHex ? cellRadius * 0.98 : cellRadius * 0.98
-
-  // Pass 1: fill petals
-  for (const center of centers) {
-    const geo = computeStarGeometry(center, polyRadius, points, starAngle)
-
-    for (let i = 0; i < geo.petals.length; i++) {
-      const colorIdx = i % fillColors.length
-      drawPolygon(ctx, geo.petals[i], fillColors[colorIdx])
+  // Generate grid centers with seamless alignment
+  const centers: Point[] = []
+  if (isHex) {
+    for (let row = -1; row <= totalRows; row++) {
+      const isOdd = ((row % 2) + 2) % 2 === 1
+      const cols = colCount + (isOdd ? 1 : 0)
+      for (let col = -1; col <= cols; col++) {
+        const cx = col * dx + (isOdd ? -dx / 2 : 0)
+        const cy = row * dy
+        centers.push({ x: cx, y: cy })
+      }
+    }
+  } else {
+    for (let row = -1; row <= totalRows; row++) {
+      for (let col = -1; col <= colCount; col++) {
+        centers.push({ x: col * dx + dx / 2, y: row * dy + dy / 2 })
+      }
     }
   }
 
-  // Pass 2: fill rosette centers
+  // Pass 1: fill petals
+  for (const center of centers) {
+    const geo = computeStarGeometry(center, polyRadius, polyRadiusY, points, starAngle)
+    for (let i = 0; i < geo.petals.length; i++) {
+      drawPolygon(ctx, geo.petals[i], fillColors[i % fillColors.length])
+    }
+  }
+
+  // Pass 2: rosette centers
   for (const center of centers) {
     const innerR = polyRadius * (0.25 + starAngle * 0.15)
-    const innerVerts = regularPolygonVertices(center, innerR, points)
+    const innerRY = polyRadiusY * (0.25 + starAngle * 0.15)
+    const innerVerts: Point[] = []
+    for (let i = 0; i < points; i++) {
+      const angle = -Math.PI / 2 + (2 * Math.PI * i) / points
+      innerVerts.push({
+        x: center.x + innerR * Math.cos(angle),
+        y: center.y + innerRY * Math.sin(angle),
+      })
+    }
     drawPolygon(ctx, innerVerts, fillColors[2 % fillColors.length])
   }
 
-  // Pass 3: stroke all strap lines
+  // Pass 3: stroke strap lines
   ctx.strokeStyle = lineColor
   ctx.lineWidth = lineWidth
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
 
   for (const center of centers) {
-    const geo = computeStarGeometry(center, polyRadius, points, starAngle)
-
+    const geo = computeStarGeometry(center, polyRadius, polyRadiusY, points, starAngle)
     for (const line of geo.strapLines) {
       ctx.beginPath()
       ctx.moveTo(line[0].x, line[0].y)
-      for (let j = 1; j < line.length; j++) {
-        ctx.lineTo(line[j].x, line[j].y)
-      }
+      for (let j = 1; j < line.length; j++) ctx.lineTo(line[j].x, line[j].y)
       ctx.stroke()
     }
   }
 
-  // Pass 4: outline each polygon
+  // Pass 4: polygon outlines
   for (const center of centers) {
-    const verts = regularPolygonVertices(center, polyRadius, points)
+    const verts: Point[] = []
+    for (let i = 0; i < points; i++) {
+      const angle = -Math.PI / 2 + (2 * Math.PI * i) / points
+      verts.push({
+        x: center.x + polyRadius * Math.cos(angle),
+        y: center.y + polyRadiusY * Math.sin(angle),
+      })
+    }
     ctx.beginPath()
     ctx.moveTo(verts[0].x, verts[0].y)
-    for (let i = 1; i < verts.length; i++) {
-      ctx.lineTo(verts[i].x, verts[i].y)
-    }
+    for (let i = 1; i < verts.length; i++) ctx.lineTo(verts[i].x, verts[i].y)
     ctx.closePath()
     ctx.stroke()
   }
