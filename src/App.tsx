@@ -6,14 +6,18 @@ import { HeatmapOverlay } from './components/HeatmapOverlay'
 import { ComposePanel } from './components/ComposePanel'
 import { ComposeCanvas } from './components/ComposeCanvas'
 import { RepeatPreview } from './components/RepeatPreview'
+import { GeneratePanel } from './components/GeneratePanel'
+import { GenerateCanvas } from './components/GenerateCanvas'
+import { GenerateRepeatPreview } from './components/GenerateRepeatPreview'
 import { useCanvasEngine } from './hooks/useCanvasEngine'
 import { convertToPixels, readImageMetadata } from './utils/imageMetadata'
 import { uiText, type UILang } from './i18n'
 import { composeText } from './i18n-compose'
+import { generateText } from './i18n-generate'
 import type { RepeatMode } from './utils/tilingEngine'
 import { MAX_EXPORT_EDGE, MAX_EXPORT_AREA, MAX_UPLOAD_SIZE_MB, ACCEPTED_IMAGE_TYPES } from './utils/constants'
 
-type AppMode = 'inspect' | 'compose'
+type AppMode = 'inspect' | 'compose' | 'generate'
 type BasePreset = '1x1' | '1x2' | '2x1' | 'custom'
 type ExportUnit = 'px' | 'in' | 'cm'
 type ExportPreset = 'a4' | 'a5' | 'postcard' | 'square20'
@@ -275,6 +279,7 @@ function App() {
   }, [engine, handlePreviewExport])
 
   const cText = composeText[lang]
+  const gText = generateText[lang]
 
   useEffect(() => {
     return () => {
@@ -294,6 +299,12 @@ function App() {
           {cText.modeCompose}
         </button>
         <button
+          className={`mode-tab ${appMode === 'generate' ? 'active' : ''}`}
+          onClick={() => setAppMode('generate')}
+        >
+          {gText.modeGenerate}
+        </button>
+        <button
           className={`mode-tab ${appMode === 'inspect' ? 'active' : ''}`}
           onClick={() => setAppMode('inspect')}
         >
@@ -310,6 +321,16 @@ function App() {
           <div className="compose-split-view">
             <ComposeCanvas lang={lang} />
             <RepeatPreview lang={lang} />
+          </div>
+        </>
+      )}
+
+      {appMode === 'generate' && (
+        <>
+          <GeneratePanel lang={lang} onSwitchToCompose={() => setAppMode('compose')} />
+          <div className="compose-split-view">
+            <GenerateCanvas />
+            <GenerateRepeatPreview lang={lang} />
           </div>
         </>
       )}
