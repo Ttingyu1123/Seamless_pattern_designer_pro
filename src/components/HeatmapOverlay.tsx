@@ -6,6 +6,7 @@ interface HeatmapOverlayProps {
   avgLeftRight: number
   avgTopBottom: number
   maxDiff: number
+  lapRatio: number
 }
 
 function scoreFromDiff(diff: number, maxDiff: number): number {
@@ -13,17 +14,30 @@ function scoreFromDiff(diff: number, maxDiff: number): number {
   return Math.round((1 - normalized) * 100)
 }
 
-export function HeatmapOverlay({ lang, visible, avgLeftRight, avgTopBottom, maxDiff }: HeatmapOverlayProps) {
+function gradeFromLapRatio(ratio: number): { letter: string; color: string } {
+  if (ratio <= 1.5) return { letter: 'S', color: '#22c55e' }
+  if (ratio <= 1.9) return { letter: 'A', color: '#84cc16' }
+  if (ratio <= 2.5) return { letter: 'B', color: '#eab308' }
+  if (ratio <= 4.0) return { letter: 'C', color: '#f97316' }
+  return { letter: 'F', color: '#ef4444' }
+}
+
+export function HeatmapOverlay({ lang, visible, avgLeftRight, avgTopBottom, maxDiff, lapRatio }: HeatmapOverlayProps) {
   if (!visible) return null
   const text = uiText[lang]
 
   const horizontalScore = scoreFromDiff(avgLeftRight, maxDiff)
   const verticalScore = scoreFromDiff(avgTopBottom, maxDiff)
+  const grade = gradeFromLapRatio(lapRatio)
 
   return (
     <div className="heatmap-overlay" role="status" aria-live="polite">
       <h2>{text.seamDetector}</h2>
-      <p>{text.seamHint}</p>
+      <div className="seam-grade">
+        <span>{text.seamGrade}</span>
+        <strong className="grade-letter" style={{ color: grade.color }}>{grade.letter}</strong>
+      </div>
+      <p className="seam-hint">{text.seamHint}</p>
       <div className="metric">
         <span>{text.leftRight}</span>
         <strong>{horizontalScore}%</strong>

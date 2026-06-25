@@ -529,7 +529,22 @@ button:disabled {
   color: var(--rose-deep);
 }
 
-.heatmap-overlay p {
+.seam-grade {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 8px;
+  font-size: 0.84rem;
+  color: var(--ink-soft);
+}
+
+.grade-letter {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.seam-hint {
   margin: 0 0 9px;
   color: var(--ink-soft);
   font-size: 0.81rem;

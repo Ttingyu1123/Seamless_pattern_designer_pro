@@ -425,6 +425,7 @@ function App() {
           avgLeftRight={engine.seamAnalysis?.avgLeftRight ?? 0}
           avgTopBottom={engine.seamAnalysis?.avgTopBottom ?? 0}
           maxDiff={engine.seamAnalysis?.maxDiff ?? 765}
+          lapRatio={engine.seamAnalysis?.lapRatio ?? 0}
         />
 
         <aside className="usage-hint" aria-label={text.guideTitle}>
