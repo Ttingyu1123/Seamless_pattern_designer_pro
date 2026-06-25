@@ -9,13 +9,14 @@ Usage:
 
 Grading (Laplacian ratio, 1.0 = perfect):
   S  <= 1.5  Pixel-perfect seamless
-  A  <= 1.9  Seamless (passes human visual test)
+  A  <= 1.75 Seamless (passes human visual test)
   B  <= 2.5  Borderline (may pass at normal zoom)
   C  <= 4.0  Visible seams
   F  >  4.0  Not seamless
 
-Validated against 21 AI-generated patterns with human Procreate testing.
-Accuracy: 94% (15/16 on held-out set).
+Also detects solid-color borders (white/black padding) as F.
+
+Validated against 101 AI-generated patterns with human Procreate testing.
 """
 
 import numpy as np
@@ -59,15 +60,24 @@ def analyze(img_path: str) -> dict:
     imed_tb = np.median(ilap_tb.mean(axis=1))
     lap_tb = slap_tb / max(imed_tb, 1.0)
 
+    BORDER_STD = 8.0
+    border = False
+    if np.std(img[:, 0, :].astype(float)) < BORDER_STD and np.std(img[:, -1, :].astype(float)) < BORDER_STD:
+        lap_lr = max(lap_lr, 10.0)
+        border = True
+    if np.std(img[0, :, :].astype(float)) < BORDER_STD and np.std(img[-1, :, :].astype(float)) < BORDER_STD:
+        lap_tb = max(lap_tb, 10.0)
+        border = True
+
     lap = max(lap_lr, lap_tb)
 
-    return {"W": W, "H": H, "lap_lr": lap_lr, "lap_tb": lap_tb, "lap": lap, "edge": edge_score}
+    return {"W": W, "H": H, "lap_lr": lap_lr, "lap_tb": lap_tb, "lap": lap, "edge": edge_score, "border": border}
 
 
 def grade(ratio: float) -> str:
     if ratio <= 1.5:
         return "[S]"
-    elif ratio <= 1.9:
+    elif ratio <= 1.75:
         return "[A]"
     elif ratio <= 2.5:
         return "[B]"
@@ -79,7 +89,7 @@ def grade(ratio: float) -> str:
 def grade_word(ratio: float) -> str:
     if ratio <= 1.5:
         return "Pixel-perfect"
-    elif ratio <= 1.9:
+    elif ratio <= 1.75:
         return "Seamless"
     elif ratio <= 2.5:
         return "Borderline"
@@ -110,7 +120,7 @@ def main():
 
     print(f"\n{'='*90}")
     print(f"  Seamless Pattern Batch Test  ({len(results)} images)")
-    print(f"  Primary: Laplacian ratio (1.0=perfect, >1.9=seam detected)")
+    print(f"  Primary: Laplacian ratio (1.0=perfect, >1.75=seam detected)")
     print(f"{'='*90}\n")
 
     print(f"  {'#':>2}  {'Grade':>3} {'Lap':>5}  {'LR':>5}  {'TB':>5}  {'Edge':>5}  {'Size':>11}  Name")
@@ -127,7 +137,11 @@ def main():
         if len(short) > 45:
             short = short[:20] + "..." + short[-20:]
 
-        mark = " <<" if r["lap"] > 1.9 else ""
+        mark = ""
+        if r.get("border"):
+            mark += " [BORDER]"
+        if r["lap"] > 1.75:
+            mark += " <<"
         print(
             f"  {i:>2}  {g:>3} {r['lap']:>5.2f}  {r['lap_lr']:>5.2f}  {r['lap_tb']:>5.2f}"
             f"  {r['edge']:>5.0f}  {r['W']:>4}x{r['H']:<4}  {short}{mark}"

@@ -16,7 +16,7 @@ function scoreFromDiff(diff: number, maxDiff: number): number {
 
 function gradeFromLapRatio(ratio: number): { letter: string; color: string } {
   if (ratio <= 1.5) return { letter: 'S', color: '#22c55e' }
-  if (ratio <= 1.9) return { letter: 'A', color: '#84cc16' }
+  if (ratio <= 1.75) return { letter: 'A', color: '#84cc16' }
   if (ratio <= 2.5) return { letter: 'B', color: '#eab308' }
   if (ratio <= 4.0) return { letter: 'C', color: '#f97316' }
   return { letter: 'F', color: '#ef4444' }

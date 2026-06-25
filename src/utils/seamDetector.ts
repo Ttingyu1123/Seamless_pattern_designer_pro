@@ -247,5 +247,35 @@ function computeLaplacianRatio(
     lapRatioTB = seamLapAvgTB / Math.max(medianTB, 1)
   }
 
+  const BORDER_STD_THRESH = 8
+  let sumLC = 0, sumSqLC = 0, sumRC = 0, sumSqRC = 0
+  for (let y = 0; y < height; y += 1) {
+    const base = y * 4 * 4
+    for (let c = 0; c < 3; c += 1) {
+      const lv = slrData[base + 2 * 4 + c]
+      const rv = slrData[base + 1 * 4 + c]
+      sumLC += lv; sumSqLC += lv * lv
+      sumRC += rv; sumSqRC += rv * rv
+    }
+  }
+  const nLR = height * 3
+  const stdL = Math.sqrt(Math.max(0, sumSqLC / nLR - (sumLC / nLR) ** 2))
+  const stdR = Math.sqrt(Math.max(0, sumSqRC / nLR - (sumRC / nLR) ** 2))
+  if (stdL < BORDER_STD_THRESH && stdR < BORDER_STD_THRESH) lapRatioLR = Math.max(lapRatioLR, 10)
+
+  let sumTC = 0, sumSqTC = 0, sumBC = 0, sumSqBC = 0
+  for (let x = 0; x < width; x += 1) {
+    for (let c = 0; c < 3; c += 1) {
+      const tv = stbData[(2 * width + x) * 4 + c]
+      const bv = stbData[(1 * width + x) * 4 + c]
+      sumTC += tv; sumSqTC += tv * tv
+      sumBC += bv; sumSqBC += bv * bv
+    }
+  }
+  const nTB = width * 3
+  const stdT = Math.sqrt(Math.max(0, sumSqTC / nTB - (sumTC / nTB) ** 2))
+  const stdB = Math.sqrt(Math.max(0, sumSqBC / nTB - (sumBC / nTB) ** 2))
+  if (stdT < BORDER_STD_THRESH && stdB < BORDER_STD_THRESH) lapRatioTB = Math.max(lapRatioTB, 10)
+
   return { lapRatioLR, lapRatioTB }
 }
