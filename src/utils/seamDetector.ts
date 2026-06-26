@@ -8,6 +8,10 @@ export interface SeamAnalysis {
   lapRatioLR: number
   lapRatioTB: number
   lapRatio: number
+  ssimSeamLR: number
+  ssimSeamTB: number
+  ssimRatio: number
+  combinedRatio: number
 }
 
 export function detectSeams(
@@ -42,6 +46,10 @@ export function detectSeams(
       lapRatioLR: 0,
       lapRatioTB: 0,
       lapRatio: 0,
+      ssimSeamLR: 1,
+      ssimSeamTB: 1,
+      ssimRatio: 1,
+      combinedRatio: 0,
     }
   }
 
@@ -108,6 +116,9 @@ export function detectSeams(
   const { lapRatioLR, lapRatioTB } = computeLaplacianRatio(source, width, height)
   const lapRatio = Math.max(lapRatioLR, lapRatioTB)
 
+  const { ssimSeamLR, ssimSeamTB, ssimRatio } = computeSSIMRatio(source, width, height)
+  const combinedRatio = Math.max(lapRatio, ssimRatio)
+
   return {
     heatmap,
     leftRightDiffs,
@@ -118,6 +129,10 @@ export function detectSeams(
     lapRatioLR,
     lapRatioTB,
     lapRatio,
+    ssimSeamLR,
+    ssimSeamTB,
+    ssimRatio,
+    combinedRatio,
   }
 }
 
@@ -278,4 +293,153 @@ function computeLaplacianRatio(
   if (stdT < BORDER_STD_THRESH && stdB < BORDER_STD_THRESH) lapRatioTB = Math.max(lapRatioTB, 10)
 
   return { lapRatioLR, lapRatioTB }
+}
+
+const SSIM_HALF = 8
+const SSIM_WIN = 8
+const SSIM_STEP = 4
+const SSIM_N_INTERIOR = 8
+
+function windowSSIM(
+  data: Uint8ClampedArray,
+  stride: number,
+  x1: number, y1: number,
+  x2: number, y2: number,
+  w: number, h: number,
+): number {
+  const C1 = 6.5025   // (0.01 * 255)^2
+  const C2 = 58.5225  // (0.03 * 255)^2
+  const n = w * h
+  let s1 = 0, s2 = 0, s11 = 0, s22 = 0, s12 = 0
+  for (let dy = 0; dy < h; dy++) {
+    for (let dx = 0; dx < w; dx++) {
+      const i1 = ((y1 + dy) * stride + (x1 + dx)) * 4
+      const i2 = ((y2 + dy) * stride + (x2 + dx)) * 4
+      const v1 = 0.299 * data[i1] + 0.587 * data[i1 + 1] + 0.114 * data[i1 + 2]
+      const v2 = 0.299 * data[i2] + 0.587 * data[i2 + 1] + 0.114 * data[i2 + 2]
+      s1 += v1; s2 += v2
+      s11 += v1 * v1; s22 += v2 * v2; s12 += v1 * v2
+    }
+  }
+  const mu1 = s1 / n, mu2 = s2 / n
+  const sig11 = s11 / n - mu1 * mu1
+  const sig22 = s22 / n - mu2 * mu2
+  const sig12 = s12 / n - mu1 * mu2
+  return ((2 * mu1 * mu2 + C1) * (2 * sig12 + C2)) /
+         ((mu1 * mu1 + mu2 * mu2 + C1) * (sig11 + sig22 + C2))
+}
+
+function meanSSIMOverStrip(
+  data: Uint8ClampedArray,
+  stride: number,
+  half: number,
+  length: number,
+  horizontal: boolean,
+): number {
+  let sum = 0, count = 0
+  if (horizontal) {
+    for (let x = 0; x <= length - SSIM_WIN; x += SSIM_STEP) {
+      sum += windowSSIM(data, stride, x, 0, x, half, SSIM_WIN, half)
+      count++
+    }
+  } else {
+    for (let y = 0; y <= length - SSIM_WIN; y += SSIM_STEP) {
+      sum += windowSSIM(data, stride, 0, y, half, y, half, SSIM_WIN)
+      count++
+    }
+  }
+  return count > 0 ? sum / count : 1
+}
+
+function computeSSIMRatio(
+  source: CanvasImageSource,
+  width: number,
+  height: number,
+): { ssimSeamLR: number; ssimSeamTB: number; ssimRatio: number } {
+  const minLR = SSIM_HALF * 4
+  const minTB = SSIM_HALF * 4
+  if (width < minLR || height < SSIM_WIN * 2) {
+    return { ssimSeamLR: 1, ssimSeamTB: 1, ssimRatio: 1 }
+  }
+
+  // --- LR seam SSIM ---
+  const seamLrC = document.createElement('canvas')
+  seamLrC.width = SSIM_HALF * 2
+  seamLrC.height = height
+  const seamLrCtx = seamLrC.getContext('2d', { willReadFrequently: true })
+  if (!seamLrCtx) return { ssimSeamLR: 1, ssimSeamTB: 1, ssimRatio: 1 }
+  seamLrCtx.drawImage(source, width - SSIM_HALF, 0, SSIM_HALF, height, 0, 0, SSIM_HALF, height)
+  seamLrCtx.drawImage(source, 0, 0, SSIM_HALF, height, SSIM_HALF, 0, SSIM_HALF, height)
+  const seamLrData = seamLrCtx.getImageData(0, 0, SSIM_HALF * 2, height).data
+  const ssimSeamLR = meanSSIMOverStrip(seamLrData, SSIM_HALF * 2, SSIM_HALF, height, false)
+
+  // Interior LR baseline
+  const intLrC = document.createElement('canvas')
+  intLrC.width = SSIM_HALF * 2
+  intLrC.height = height * SSIM_N_INTERIOR
+  const intLrCtx = intLrC.getContext('2d', { willReadFrequently: true })
+  let intMeanLR = 1
+  if (intLrCtx) {
+    for (let i = 0; i < SSIM_N_INTERIOR; i++) {
+      const x = SSIM_HALF + Math.floor(i * (width - SSIM_HALF * 3) / SSIM_N_INTERIOR)
+      intLrCtx.drawImage(source, x, 0, SSIM_HALF * 2, height, 0, i * height, SSIM_HALF * 2, height)
+    }
+    const intLrData = intLrCtx.getImageData(0, 0, SSIM_HALF * 2, height * SSIM_N_INTERIOR).data
+    const intLrStride = SSIM_HALF * 2
+    let intSum = 0, intCount = 0
+    for (let i = 0; i < SSIM_N_INTERIOR; i++) {
+      const yOff = i * height
+      for (let y = 0; y <= height - SSIM_WIN; y += SSIM_STEP) {
+        intSum += windowSSIM(intLrData, intLrStride, 0, yOff + y, SSIM_HALF, yOff + y, SSIM_HALF, SSIM_WIN)
+        intCount++
+      }
+    }
+    if (intCount > 0) intMeanLR = intSum / intCount
+  }
+
+  const ssimRatioLR = (1 - ssimSeamLR) / Math.max(1 - intMeanLR, 0.05)
+
+  // --- TB seam SSIM ---
+  let ssimSeamTB = 1
+  let ssimRatioTB = 1
+  if (height >= minTB && width >= SSIM_WIN * 2) {
+    const seamTbC = document.createElement('canvas')
+    seamTbC.width = width
+    seamTbC.height = SSIM_HALF * 2
+    const seamTbCtx = seamTbC.getContext('2d', { willReadFrequently: true })
+    if (seamTbCtx) {
+      seamTbCtx.drawImage(source, 0, height - SSIM_HALF, width, SSIM_HALF, 0, 0, width, SSIM_HALF)
+      seamTbCtx.drawImage(source, 0, 0, width, SSIM_HALF, 0, SSIM_HALF, width, SSIM_HALF)
+      const seamTbData = seamTbCtx.getImageData(0, 0, width, SSIM_HALF * 2).data
+      ssimSeamTB = meanSSIMOverStrip(seamTbData, width, SSIM_HALF, width, true)
+
+      const intTbC = document.createElement('canvas')
+      intTbC.width = width
+      intTbC.height = SSIM_HALF * 2 * SSIM_N_INTERIOR
+      const intTbCtx = intTbC.getContext('2d', { willReadFrequently: true })
+      if (intTbCtx) {
+        for (let i = 0; i < SSIM_N_INTERIOR; i++) {
+          const y = SSIM_HALF + Math.floor(i * (height - SSIM_HALF * 3) / SSIM_N_INTERIOR)
+          intTbCtx.drawImage(source, 0, y, width, SSIM_HALF * 2, 0, i * SSIM_HALF * 2, width, SSIM_HALF * 2)
+        }
+        const intTbData = intTbCtx.getImageData(0, 0, width, SSIM_HALF * 2 * SSIM_N_INTERIOR).data
+        let intSum = 0, intCount = 0
+        for (let i = 0; i < SSIM_N_INTERIOR; i++) {
+          const yOff = i * SSIM_HALF * 2
+          for (let x = 0; x <= width - SSIM_WIN; x += SSIM_STEP) {
+            intSum += windowSSIM(intTbData, width, x, yOff, x, yOff + SSIM_HALF, SSIM_WIN, SSIM_HALF)
+            intCount++
+          }
+        }
+        const intMeanTB = intCount > 0 ? intSum / intCount : 1
+        ssimRatioTB = (1 - ssimSeamTB) / Math.max(1 - intMeanTB, 0.05)
+      }
+    }
+  }
+
+  return {
+    ssimSeamLR,
+    ssimSeamTB,
+    ssimRatio: Math.max(ssimRatioLR, ssimRatioTB),
+  }
 }
