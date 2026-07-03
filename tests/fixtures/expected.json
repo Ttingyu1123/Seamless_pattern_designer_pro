@@ -20,6 +20,13 @@
     "ssim_ratio": 2.5643,
     "border": true
   },
+  "faint-seam.png": {
+    "grade": "A",
+    "combined": 1.5944,
+    "lap": 1.5944,
+    "ssim_ratio": 1.2036,
+    "border": false
+  },
   "subtle-seam.png": {
     "grade": "B",
     "combined": 2.188,

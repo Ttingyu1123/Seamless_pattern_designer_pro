@@ -1,4 +1,5 @@
-import { computeSeamMetrics, type SeamMetrics } from './seamMetrics'
+import { type SeamMetrics } from './seamMetrics'
+import { computeSeamMetricsAsync } from './seamWorkerClient'
 
 export interface SeamAnalysis extends SeamMetrics {
   heatmap: HTMLCanvasElement
@@ -19,12 +20,12 @@ const EMPTY_METRICS: SeamMetrics = {
   combinedRatio: 0,
 }
 
-export function detectSeams(
+export async function detectSeams(
   source: CanvasImageSource,
   width: number,
   height: number,
   withHeatmap: boolean,
-): SeamAnalysis {
+): Promise<SeamAnalysis> {
   const heatmap = document.createElement('canvas')
   heatmap.width = Math.max(1, withHeatmap ? width : 1)
   heatmap.height = Math.max(1, withHeatmap ? height : 1)
@@ -44,7 +45,7 @@ export function detectSeams(
 
   workCtx.drawImage(source, 0, 0)
   const { data } = workCtx.getImageData(0, 0, width, height)
-  const metrics = computeSeamMetrics(data, width, height)
+  const metrics = await computeSeamMetricsAsync(data, width, height)
 
   if (withHeatmap) {
     drawHeatmap(heatmap, metrics, width, height)

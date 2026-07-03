@@ -82,6 +82,11 @@ def _ramped(amplitude: float) -> np.ndarray:
     return np.clip(_waves_float() + ramp, 0, 255).astype(np.uint8)
 
 
+def faint_seam() -> np.ndarray:
+    """Barely-visible seam over textured interior -> grade A."""
+    return _ramped(33)
+
+
 def subtle_seam() -> np.ndarray:
     """Moderate seam over textured interior -> grade B."""
     return _ramped(50)
@@ -103,6 +108,7 @@ FIXTURES = {
     "tileable-waves.png": tileable_waves,
     "gradient-seam.png": gradient_seam,
     "white-border.png": white_border,
+    "faint-seam.png": faint_seam,
     "subtle-seam.png": subtle_seam,
     "visible-seam.png": visible_seam,
     "uniform-noise.png": uniform_noise,

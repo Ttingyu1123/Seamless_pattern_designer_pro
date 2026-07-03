@@ -1,5 +1,6 @@
 import { ACCEPTED_IMAGE_TYPES } from './constants'
-import { computeSeamMetrics, gradeFromRatio, type SeamGrade } from './seamMetrics'
+import { gradeFromRatio, type SeamGrade } from './seamMetrics'
+import { computeSeamMetricsAsync } from './seamWorkerClient'
 
 export interface BatchResult {
   file: File
@@ -38,7 +39,7 @@ async function analyzeOne(file: File): Promise<BatchResult> {
     ctx.drawImage(bitmap, 0, 0, w, h)
     const { data } = ctx.getImageData(0, 0, w, h)
 
-    const m = computeSeamMetrics(data, w, h)
+    const m = await computeSeamMetricsAsync(data, w, h)
     return {
       file,
       name: file.name,

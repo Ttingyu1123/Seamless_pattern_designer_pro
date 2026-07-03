@@ -155,16 +155,24 @@ export function useCanvasEngine({
   const drawTileCanvas = offsetPreview ? previewTileCanvas : previewBaseTileCanvas
   const drawExportTileCanvas = offsetPreview ? exportOffsetTileCanvas : exportBaseTileCanvas
 
-  const seamAnalysis = useMemo(() => {
-    if (!previewBaseTileCanvas) return null
+  const [seamAnalysis, setSeamAnalysis] = useState<SeamAnalysis | null>(null)
+  useEffect(() => {
+    let cancelled = false
     const needSeam = showHeatmap || showProblemSeams
-    if (!needSeam) return null
-    return detectSeams(
-      previewBaseTileCanvas,
-      previewBaseTileCanvas.width,
-      previewBaseTileCanvas.height,
-      showHeatmap,
-    )
+    const compute = previewBaseTileCanvas && needSeam
+      ? detectSeams(
+          previewBaseTileCanvas,
+          previewBaseTileCanvas.width,
+          previewBaseTileCanvas.height,
+          showHeatmap,
+        )
+      : Promise.resolve(null)
+    compute.then((analysis) => {
+      if (!cancelled) setSeamAnalysis(analysis)
+    })
+    return () => {
+      cancelled = true
+    }
   }, [previewBaseTileCanvas, showHeatmap, showProblemSeams])
 
   const palette = useMemo(() => {
