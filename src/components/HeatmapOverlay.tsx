@@ -1,5 +1,5 @@
 import { uiText, type UILang } from '../i18n'
-import { gradeFromRatio, type SeamGrade } from '../utils/seamMetrics'
+import { GRADE_COLORS, gradeFromRatio } from '../utils/seamMetrics'
 
 interface HeatmapOverlayProps {
   lang: UILang
@@ -17,13 +17,6 @@ function scoreFromDiff(diff: number, maxDiff: number): number {
   return Math.round((1 - normalized) * 100)
 }
 
-const GRADE_COLORS: Record<SeamGrade, string> = {
-  S: '#22c55e',
-  A: '#84cc16',
-  B: '#eab308',
-  C: '#f97316',
-  F: '#ef4444',
-}
 
 export function HeatmapOverlay({ lang, visible, avgLeftRight, avgTopBottom, maxDiff, combinedRatio, ssimSeamLR, ssimSeamTB }: HeatmapOverlayProps) {
   if (!visible) return null

@@ -679,3 +679,119 @@ button:disabled {
   font-size: 0.78rem;
   margin: 12px 0;
 }
+
+/* ===== Batch grading panel ===== */
+.batch-panel {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  width: min(480px, calc(100% - 28px));
+  max-height: min(60vh, 520px);
+  display: flex;
+  flex-direction: column;
+  background: rgba(253, 252, 245, 0.94);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 12px;
+  z-index: 5;
+}
+
+.batch-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.batch-panel-head h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--ink-strong);
+}
+
+.batch-panel-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.batch-progress,
+.batch-summary,
+.batch-hint {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+.batch-summary {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.batch-table-wrap {
+  margin-top: 8px;
+  overflow-y: auto;
+  border-top: 1px solid var(--line-soft);
+}
+
+.batch-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.batch-table th {
+  position: sticky;
+  top: 0;
+  background: rgba(253, 252, 245, 0.98);
+  text-align: left;
+  padding: 6px 8px;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.batch-table td {
+  padding: 5px 8px;
+  border-top: 1px solid rgba(161, 134, 180, 0.12);
+  color: var(--ink-strong);
+  white-space: nowrap;
+}
+
+.batch-table tbody tr {
+  cursor: pointer;
+}
+
+.batch-table tbody tr:hover {
+  background: rgba(161, 134, 180, 0.10);
+}
+
+.batch-table tbody tr.batch-row-error {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.batch-grade {
+  display: inline-block;
+  min-width: 22px;
+  text-align: center;
+  padding: 1px 6px;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 700;
+}
+
+.batch-name {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.batch-folder-field {
+  margin-top: 6px;
+}
+
+.batch-folder-btn {
+  display: inline-block;
+  text-align: center;
+  cursor: pointer;
+}

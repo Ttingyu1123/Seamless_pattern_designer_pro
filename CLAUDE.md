@@ -11,6 +11,7 @@ Client-side React SPA for **seam quality inspection**: upload a pattern tile, pr
 ```
 src/
 ├── components/
+│   ├── BatchPanel.tsx        # Batch grading results table (multi-file upload)
 │   ├── CanvasView.tsx        # Canvas container (thin wrapper)
 │   ├── ControlPanel.tsx      # Left sidebar: upload, repeat config, export settings
 │   └── HeatmapOverlay.tsx    # Seam grade (S/A/B/C/F) + metrics panel
@@ -18,20 +19,27 @@ src/
 │   ├── useCanvasEngine.ts    # Tile memos, viewport, render loop, PNG/PDF export
 │   └── useGestureHandlers.ts # Pointer/touch/wheel gestures (pan, pinch, wheel zoom)
 ├── utils/
+│   ├── batchAnalyzer.ts      # Multi-file seam grading + CSV report
 │   ├── constants.ts          # Shared constants (export limits, upload limits)
 │   ├── colorPalette.ts       # Hue-bucketed HSV k-means color extraction
 │   ├── exportRenderer.ts     # Tiling render shared by PNG and PDF export
 │   ├── imageMetadata.ts      # PNG/JPEG DPI binary parsing
 │   ├── saveImage.ts          # Download / iOS Web Share save
-│   ├── seamDetector.ts       # Seam analysis: edge diff, Laplacian ratio, SSIM
+│   ├── seamDetector.ts       # Canvas wrapper: pixels -> seamMetrics + heatmap
+│   ├── seamMetrics.ts        # PURE seam math (no DOM) - unit-tested vs Python oracle
 │   └── tilingEngine.ts       # Repeat modes: grid, half-drop, mirror, hex, diamond
 ├── App.tsx                   # App shell + all inspect state (useState)
 ├── App.css                   # All component styles
 ├── i18n.ts                   # EN/ZH translations
 └── main.tsx                  # Entry point
 scripts/
-├── batch_seam_test.py        # Offline batch grader (same algorithm as seamDetector.ts)
+├── batch_seam_test.py        # Offline batch grader (same algorithm as seamMetrics.ts)
+├── make_test_fixtures.py     # Regenerate tests/fixtures/ + expected.json oracle
 └── ship.ps1                  # One-command commit + push (with confirmation gate)
+tests/
+├── fixtures/                 # Deterministic PNGs + expected.json (Python-graded)
+├── seamMetrics.test.ts       # TS grades must match Python oracle
+└── tilingEngine.test.ts      # Offset/flip math
 ```
 
 > Compose and Generate modes were removed in 2026-07 (commit 0e379c7) to focus

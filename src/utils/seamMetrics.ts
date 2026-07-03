@@ -36,6 +36,14 @@ export function gradeFromRatio(ratio: number): SeamGrade {
   return 'F'
 }
 
+export const GRADE_COLORS: Record<SeamGrade, string> = {
+  S: '#22c55e',
+  A: '#84cc16',
+  B: '#eab308',
+  C: '#f97316',
+  F: '#ef4444',
+}
+
 const N_INTERIOR_SAMPLES = 16
 const BORDER_STD_THRESH = 8
 

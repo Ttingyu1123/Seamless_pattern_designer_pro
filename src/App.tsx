@@ -3,7 +3,9 @@ import './App.css'
 import { CanvasView } from './components/CanvasView'
 import { ControlPanel } from './components/ControlPanel'
 import { HeatmapOverlay } from './components/HeatmapOverlay'
+import { BatchPanel } from './components/BatchPanel'
 import { useCanvasEngine } from './hooks/useCanvasEngine'
+import { analyzeBatch, type BatchResult } from './utils/batchAnalyzer'
 import { convertToPixels, readImageMetadata } from './utils/imageMetadata'
 import { uiText, type UILang } from './i18n'
 import type { RepeatMode } from './utils/tilingEngine'
@@ -43,6 +45,9 @@ function App() {
   const [exportUpscale, setExportUpscale] = useState(1)
   const [pdfBleed, setPdfBleed] = useState(false)
   const [showDimensions, setShowDimensions] = useState(false)
+
+  const [batchResults, setBatchResults] = useState<BatchResult[] | null>(null)
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null)
 
   const repeatBase = useMemo(() => {
     if (!sourceImage) {
@@ -210,6 +215,22 @@ function App() {
     }
   }
 
+  const handleBatchUpload = useCallback(async (files: File[]) => {
+    if (files.length === 0) return
+    setBatchResults(null)
+    setBatchProgress({ done: 0, total: files.length })
+    const results = await analyzeBatch(files, (done, total) =>
+      setBatchProgress({ done, total }),
+    )
+    setBatchResults(results)
+    setBatchProgress(null)
+  }, [])
+
+  const handleCloseBatch = useCallback(() => {
+    setBatchResults(null)
+    setBatchProgress(null)
+  }, [])
+
   const handlePreviewExport = useCallback(() => {
     setCheckTilesX(Math.max(1, exportTilesX))
     setCheckTilesY(Math.max(1, autoExportTilesY))
@@ -318,6 +339,7 @@ function App() {
         onShowDimensionsChange={setShowDimensions}
         onExportSpecSheet={engine.exportSpecSheet}
         onUpload={handleUpload}
+        onUploadBatch={handleBatchUpload}
         onRepeatModeChange={setRepeatMode}
         onShiftChange={setShiftPercent}
         onCheckTilesXChange={setCheckTilesX}
@@ -357,6 +379,14 @@ function App() {
           onPointerUp={engine.handlers.onPointerUp}
           onPointerCancel={engine.handlers.onPointerCancel}
           onWheel={engine.handlers.onWheel}
+        />
+
+        <BatchPanel
+          lang={lang}
+          results={batchResults}
+          progress={batchProgress}
+          onSelect={handleUpload}
+          onClose={handleCloseBatch}
         />
 
         <HeatmapOverlay

@@ -72,6 +72,13 @@ MIT. See [LICENSE](LICENSE).
 - `Show Seam Heatmap` 顯示接縫熱圖
 - `Show Problem Seams` 僅標示超過門檻的問題接縫
 - 可調整 `Seam Threshold`
+- 接縫評級 S/A/B/C/F（Laplacian ratio + SSIM，與 `scripts/batch_seam_test.py` 同一套演算法）
+
+3b. 批次評分（Batch Grading）
+- 上傳多張圖片（或整個資料夾）一次評分
+- 結果表依品質排序，顯示等級徽章、ratio、尺寸
+- 點擊任一列即載入該圖進行詳細檢查
+- 可匯出 CSV 報表
 
 4. 檢查視圖
 - 右側 Canvas 支援縮放 / 平移

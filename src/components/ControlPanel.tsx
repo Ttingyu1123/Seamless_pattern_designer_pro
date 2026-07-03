@@ -129,6 +129,7 @@ interface ControlPanelProps {
   onShowDimensionsChange: (value: boolean) => void
   onExportSpecSheet: () => void
   onUpload: (file: File) => void
+  onUploadBatch: (files: File[]) => void
   onRepeatModeChange: (mode: RepeatMode) => void
   onShiftChange: (value: number) => void
   onCheckTilesXChange: (value: number) => void
@@ -200,6 +201,7 @@ export const ControlPanel = memo(function ControlPanel({
   onShowDimensionsChange,
   onExportSpecSheet,
   onUpload,
+  onUploadBatch,
   onRepeatModeChange,
   onShiftChange,
   onCheckTilesXChange,
@@ -332,9 +334,27 @@ export const ControlPanel = memo(function ControlPanel({
         <input
           type="file"
           accept="image/png,image/jpeg"
+          multiple
           onChange={(event) => {
-            const file = event.target.files?.[0]
-            if (file) onUpload(file)
+            const files = Array.from(event.target.files ?? [])
+            if (files.length > 1) onUploadBatch(files)
+            else if (files[0]) onUpload(files[0])
+            event.currentTarget.value = ''
+          }}
+        />
+      </label>
+
+      <label className="field batch-folder-field">
+        <span className="secondary-btn batch-folder-btn">{text.batchFolder}</span>
+        <input
+          type="file"
+          accept="image/png,image/jpeg"
+          multiple
+          style={{ display: 'none' }}
+          {...{ webkitdirectory: '' }}
+          onChange={(event) => {
+            const files = Array.from(event.target.files ?? [])
+            if (files.length > 0) onUploadBatch(files)
             event.currentTarget.value = ''
           }}
         />
