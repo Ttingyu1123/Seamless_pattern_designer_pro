@@ -82,4 +82,17 @@ https://seamless-pattern-designer-pro.vercel.app — there is no manual deploy s
 - **i18n:** All UI strings in `i18n.ts`, keyed by `en`/`zh`. No inline `lang === 'zh' ? ... : ...` ternaries.
 - **Keyboard shortcuts:** P=preview toggle, E=export PNG, R=reset view
 - **Export filename format:** `seamless-pattern_{WxH}px_{DPI}dpi_{timestamp}.{ext}`
-- **Seam grade thresholds:** S≤1.5, A≤1.75, B≤2.5, C≤4.0, F>4.0 — changing them requires updating HeatmapOverlay.tsx AND scripts/batch_seam_test.py together.
+
+## Algorithm Maintenance Rules（改 seam 演算法/門檻必讀）
+
+`src/utils/seamMetrics.ts`（TS，唯一門檻來源）和 `scripts/batch_seam_test.py`（Python oracle）是**同一演算法的兩份實作**，tests/ 用 fixture 把兩邊鎖定。固定流程：
+
+1. 兩份實作**一起改**（TS 改了 Python 也要改，反之亦然）。
+2. 跑 `python scripts/make_test_fixtures.py` 重生 fixtures + `tests/fixtures/expected.json`（oracle 分級）。
+3. 跑 `npm test` — parity 測試斷言 TS 分級 == Python 分級、ratio 相對差 <20%。
+4. 改渲染輸出（heatmap 等）時用 Playwright 像素 diff 驗證，不能只看 code——heatmap 曾因零長度 stroke 全空白數月無人發現。
+
+已知指標特性（不是 bug）：
+- 無紋理平滑圖會誤判 F（SSIM interior baseline 趨近零）→ 合成測試圖必須加紋理（fixtures 全部含 σ=12 噪聲）。
+- 純噪點圖評 S 是正確行為（噪點拼接人眼本來就看不出縫，ratio-based 設計即為此）。
+- Grade thresholds: S≤1.5, A≤1.75, B≤2.5, C≤4.0, F>4.0。
