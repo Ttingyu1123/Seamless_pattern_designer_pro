@@ -2,100 +2,73 @@
 
 ## Overview
 
-Client-side React SPA with dual-mode workflow: **Compose**（組合 motif → 建立 tile）and **Inspect**（檢視既有 tile → 預覽重複 → 匯出）. No backend. Deployed via GitHub Pages (`docs/` folder).
+Client-side React SPA for **seam quality inspection**: upload a pattern tile, preview repeats, detect visible seams (Laplacian + SSIM grading), and export print-ready PNG/PDF. No backend — artwork never leaves the browser.
 
-**Stack:** React 19 + TypeScript 5.9 + Vite 7 + HTML5 Canvas API + Zustand 5 + jsPDF
+**Stack:** React 19 + TypeScript 5.9 + Vite 7 + HTML5 Canvas API + jsPDF
 
 ## Project Structure
 
 ```
 src/
 ├── components/
-│   ├── CanvasView.tsx              # Canvas container (thin wrapper, inspect mode)
-│   ├── ControlPanel.tsx            # Inspect mode UI controls
-│   ├── HeatmapOverlay.tsx          # Seam quality display
-│   ├── ComposeCanvas.tsx           # Compose: edit canvas (drag-drop, pointer interaction)
-│   ├── ComposePanel.tsx            # Compose: left sidebar (layers, export, save/load)
-│   ├── ComposeTileConfig.tsx       # Compose: tile size config (px/mm/cm, print calculator, presets)
-│   ├── RepeatPreview.tsx           # Compose: right-side tiled preview
-│   └── ScatterDialog.tsx           # Compose: Poisson Disk scatter settings
+│   ├── CanvasView.tsx        # Canvas container (thin wrapper)
+│   ├── ControlPanel.tsx      # Left sidebar: upload, repeat config, export settings
+│   └── HeatmapOverlay.tsx    # Seam grade (S/A/B/C/F) + metrics panel
 ├── hooks/
-│   ├── useCanvasEngine.ts          # Inspect: tile memos, viewport, rendering, export
-│   ├── useComposerEngine.ts        # Compose: edit canvas render loop, image cache
-│   └── useGestureHandlers.ts       # Pointer/touch/wheel gesture handling
-├── store/
-│   └── composerStore.ts            # Zustand: layers, tile config, undo/redo (zundo)
+│   ├── useCanvasEngine.ts    # Tile memos, viewport, render loop, PNG/PDF export
+│   └── useGestureHandlers.ts # Pointer/touch/wheel gestures (pan, pinch, wheel zoom)
 ├── utils/
-│   ├── constants.ts                # Shared constants
-│   ├── colorPalette.ts             # Hue-bucketed HSV k-means color extraction
-│   ├── composeExport.ts            # Compose: single tile + tiled image export
-│   ├── exportRenderer.ts           # Inspect: tiling render for PNG/PDF export
-│   ├── hitTest.ts                  # Point-in-rotated-rect, handle detection
-│   ├── imageMetadata.ts            # PNG/JPEG DPI binary parsing
-│   ├── layerRenderer.ts            # flattenComposedTile() with lattice wrap-around
-│   ├── projectFile.ts              # .spc JSON save/load + localStorage autosave
-│   ├── scatterEngine.ts            # Poisson Disk Sampling auto-scatter
-│   ├── seamDetector.ts             # Edge difference heatmap
-│   ├── snapEngine.ts               # Smart Snap alignment (center/edge/motif)
-│   └── tilingEngine.ts             # 10 repeat modes: grid, half-drop, mirror, hex, diamond
-├── App.tsx                         # Dual-mode shell (compose/inspect)
-├── App.css                         # All component styles
-├── i18n.ts                         # Inspect mode EN/ZH translations
-├── i18n-compose.ts                 # Compose mode EN/ZH translations
-└── main.tsx                        # Entry point
+│   ├── constants.ts          # Shared constants (export limits, upload limits)
+│   ├── colorPalette.ts       # Hue-bucketed HSV k-means color extraction
+│   ├── exportRenderer.ts     # Tiling render shared by PNG and PDF export
+│   ├── imageMetadata.ts      # PNG/JPEG DPI binary parsing
+│   ├── saveImage.ts          # Download / iOS Web Share save
+│   ├── seamDetector.ts       # Seam analysis: edge diff, Laplacian ratio, SSIM
+│   └── tilingEngine.ts       # Repeat modes: grid, half-drop, mirror, hex, diamond
+├── App.tsx                   # App shell + all inspect state (useState)
+├── App.css                   # All component styles
+├── i18n.ts                   # EN/ZH translations
+└── main.tsx                  # Entry point
+scripts/
+├── batch_seam_test.py        # Offline batch grader (same algorithm as seamDetector.ts)
+└── ship.ps1                  # One-command commit + push (with confirmation gate)
 ```
+
+> Compose and Generate modes were removed in 2026-07 (commit 0e379c7) to focus
+> the product on seam inspection. Their code (Zustand stores, layer compositing,
+> pattern generators) lives in git history if ever needed.
 
 ## Key Architecture
 
-### Dual Mode
-- **Compose:** Zustand store (`composerStore.ts`) manages layers, tile size, repeat mode
-- **Inspect:** All state in App.tsx via useState (original architecture)
-- Mode switch via top nav tabs; both modes share `tilingEngine.ts`
-
-### Compose Mode
-- **State:** Zustand 5 with individual `(s) => s.field` selectors (React 19 compatible)
-- **Undo/Redo:** zundo temporal middleware, 50-step history, Ctrl+Z/Y
-- **Rendering:** Split view — left=edit canvas, right=tiled preview
-- **Wrap-around:** Lattice vector math for correct half-drop/hexagonal/diamond seamless tiling
-- **Interaction:** Figma-style handles (body=move, corner=scale, top-circle=rotate)
-- **Image cache:** Global `Map<layerId, HTMLImageElement>`, auto-loads on duplicate/open
-- **Export:** Single tile PNG + tiled repeat PNG
-- **Print Size Calculator:** Physical size (cm/mm/in) + DPI → pixel canvas size; print presets (5/10/15/20cm @300dpi)
-- **Tile units:** px, mm, cm — physical units show DPI and auto-convert; px mode shows cm equivalent hint
-
-### Inspect Mode
-- **Rendering:** requestAnimationFrame loop in useCanvasEngine
-- **Gestures:** Extracted to useGestureHandlers (pan, pinch zoom, wheel zoom)
-- **Export:** Shared `renderExportCanvas()` used by both PNG and PDF paths
-- **DPI workflow:** Binary-parse source image DPI → preserve in export metadata
-- **Motif size control:** Set desired motif physical size (cm/in) → auto-calculate tile count
-- **PDF bleed:** Optional 3mm bleed with trim marks for professional print production
-- **Color palette:** Hue-bucketed HSV k-means extraction (8 semantic buckets), click-to-copy hex
-- **Dimension overlay:** Toggle to show tile physical size (cm) with measurement lines on canvas
-- **Spec sheet PDF:** One-page A4 with tile thumbnail, 3x3 repeat preview, full specs, color palette
+- **State:** All in App.tsx via useState, threaded into ControlPanel by props.
+- **Rendering:** requestAnimationFrame-driven redraw in useCanvasEngine; preview uses a ≤2048px downscaled bitmap, exports use the full-resolution source.
+- **Seam grading:** `detectSeams()` computes edge pixel diff + Laplacian ratio + SSIM ratio; `combinedRatio = max(lap, ssim)` maps to S/A/B/C/F (thresholds in HeatmapOverlay.tsx and batch_seam_test.py — keep in sync).
+- **DPI workflow:** Binary-parse source image DPI → preserve in export metadata.
+- **PDF:** Optional 3mm bleed with trim marks; one-page A4 spec sheet with thumbnail, 3x3 preview, specs, color palette.
 
 ## Repeat Modes (tilingEngine.ts)
 
 `grid | half-drop-row | half-drop-column | half-brick | mirror-x | mirror-y | mirror-xy | hexagonal | diamond | horizontal-only`
 
+(Note: hexagonal currently uses the same lattice as half-brick.)
+
 ## Build & Deploy
 
 ```bash
 npm run dev          # Dev server
-npm run build        # Production build → dist/
+npm run build        # tsc + vite build → dist/
 npm run preview      # Preview production build
 npm run lint         # ESLint (React Compiler rules enabled)
-npm run ship "msg"   # Git add + commit + push (one command)
+npm run ship "msg"   # Git add + commit + push (asks for confirmation first)
 ```
 
-GitHub Pages serves from `docs/` — copy `dist/` to `docs/` for deploy.
+**Deploy: Vercel.** Pushing to `main` auto-deploys to
+https://seamless-pattern-designer-pro.vercel.app — there is no manual deploy step.
+(GitHub Pages is NOT used; `docs/` holds project documents, not build output.)
 
 ## Conventions
 
-- **i18n:** UI strings in `i18n.ts` (inspect) and `i18n-compose.ts` (compose), keyed by `en`/`zh`
-- **Zustand selectors:** Always use `(s) => s.field` pattern, never destructure (React 19 batching)
-- **Keyboard shortcuts (Compose):** Delete=remove layer, Ctrl+D=duplicate, Ctrl+Z/Y=undo/redo
-- **Keyboard shortcuts (Inspect):** P=preview toggle, E=export PNG, R=reset view
+- **i18n:** All UI strings in `i18n.ts`, keyed by `en`/`zh`. No inline `lang === 'zh' ? ... : ...` ternaries.
+- **Keyboard shortcuts:** P=preview toggle, E=export PNG, R=reset view
 - **Export filename format:** `seamless-pattern_{WxH}px_{DPI}dpi_{timestamp}.{ext}`
-- **Project file:** `.spc` = JSON with base64 embedded images
-- **Lattice wrap-around:** `getLatticeVectors()` defines periodicity per repeat mode; wrap offsets enumerate lattice points n×v1 + m×v2
+- **Seam grade thresholds:** S≤1.5, A≤1.75, B≤2.5, C≤4.0, F>4.0 — changing them requires updating HeatmapOverlay.tsx AND scripts/batch_seam_test.py together.

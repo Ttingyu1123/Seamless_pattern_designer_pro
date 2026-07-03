@@ -180,9 +180,12 @@ npm run ship -- "feat: your message"
 ```
 
 會依序執行:
-1. `git status`
+1. `git status --short` 並**要求確認**（避免誤提交未預期的檔案）
 2. `git add .`
 3. `git commit -m "..."`
 4. `git push`
+
+Push 到 `main` 後 Vercel 會自動部署到
+https://seamless-pattern-designer-pro.vercel.app 。
 
 詳細請見 `WORKFLOW.md`。

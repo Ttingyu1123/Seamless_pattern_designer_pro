@@ -21,8 +21,14 @@ if ([string]::IsNullOrWhiteSpace($commitMessage)) {
   $commitMessage = "chore: update project ($timestamp)"
 }
 
-Write-Host "== Git status =="
-git status
+Write-Host "== Files to be committed =="
+git status --short
+Write-Host ""
+$answer = Read-Host "Stage ALL of the above and push? (y/N)"
+if ($answer -notmatch '^[Yy]$') {
+  Write-Host "Aborted. Nothing staged."
+  exit 1
+}
 
 Write-Host "== git add . =="
 git add .
