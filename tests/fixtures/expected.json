@@ -1,0 +1,44 @@
+{
+  "tileable-waves.png": {
+    "grade": "S",
+    "combined": 1.2078,
+    "lap": 1.0084,
+    "ssim_ratio": 1.2078,
+    "border": false
+  },
+  "gradient-seam.png": {
+    "grade": "F",
+    "combined": 253.5,
+    "lap": 253.5,
+    "ssim_ratio": 4.7542,
+    "border": false
+  },
+  "white-border.png": {
+    "grade": "F",
+    "combined": 10.0,
+    "lap": 10.0,
+    "ssim_ratio": 2.5643,
+    "border": true
+  },
+  "subtle-seam.png": {
+    "grade": "B",
+    "combined": 2.188,
+    "lap": 2.188,
+    "ssim_ratio": 1.1815,
+    "border": false
+  },
+  "visible-seam.png": {
+    "grade": "C",
+    "combined": 3.6827,
+    "lap": 3.6827,
+    "ssim_ratio": 1.1009,
+    "border": false
+  },
+  "uniform-noise.png": {
+    "grade": "S",
+    "combined": 1.0342,
+    "lap": 1.0342,
+    "ssim_ratio": 1.0067,
+    "border": false
+  }
+}

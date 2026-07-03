@@ -1,4 +1,5 @@
 import { uiText, type UILang } from '../i18n'
+import { gradeFromRatio, type SeamGrade } from '../utils/seamMetrics'
 
 interface HeatmapOverlayProps {
   lang: UILang
@@ -16,12 +17,12 @@ function scoreFromDiff(diff: number, maxDiff: number): number {
   return Math.round((1 - normalized) * 100)
 }
 
-function gradeFromRatio(ratio: number): { letter: string; color: string } {
-  if (ratio <= 1.5) return { letter: 'S', color: '#22c55e' }
-  if (ratio <= 1.75) return { letter: 'A', color: '#84cc16' }
-  if (ratio <= 2.5) return { letter: 'B', color: '#eab308' }
-  if (ratio <= 4.0) return { letter: 'C', color: '#f97316' }
-  return { letter: 'F', color: '#ef4444' }
+const GRADE_COLORS: Record<SeamGrade, string> = {
+  S: '#22c55e',
+  A: '#84cc16',
+  B: '#eab308',
+  C: '#f97316',
+  F: '#ef4444',
 }
 
 export function HeatmapOverlay({ lang, visible, avgLeftRight, avgTopBottom, maxDiff, combinedRatio, ssimSeamLR, ssimSeamTB }: HeatmapOverlayProps) {
@@ -31,6 +32,7 @@ export function HeatmapOverlay({ lang, visible, avgLeftRight, avgTopBottom, maxD
   const horizontalScore = scoreFromDiff(avgLeftRight, maxDiff)
   const verticalScore = scoreFromDiff(avgTopBottom, maxDiff)
   const grade = gradeFromRatio(combinedRatio)
+  const gradeColor = GRADE_COLORS[grade]
   const ssimPct = Math.round(Math.min(ssimSeamLR, ssimSeamTB) * 100)
 
   return (
@@ -38,7 +40,7 @@ export function HeatmapOverlay({ lang, visible, avgLeftRight, avgTopBottom, maxD
       <h2>{text.seamDetector}</h2>
       <div className="seam-grade">
         <span>{text.seamGrade}</span>
-        <strong className="grade-letter" style={{ color: grade.color }}>{grade.letter}</strong>
+        <strong className="grade-letter" style={{ color: gradeColor }}>{grade}</strong>
       </div>
       <p className="seam-hint">{text.seamHint}</p>
       <div className="metric">
