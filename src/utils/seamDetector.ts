@@ -86,27 +86,29 @@ export function detectSeams(
   if (withHeatmap) {
     const heatCtx = heatmap.getContext('2d')
     if (heatCtx) {
+      const image = heatCtx.createImageData(width, height)
+      const px = image.data
+      const setPixel = (x: number, y: number, r: number, g: number, b: number, strength: number) => {
+        const i = (y * width + x) * 4
+        px[i] = r
+        px[i + 1] = g
+        px[i + 2] = b
+        px[i + 3] = Math.round(255 * (0.12 + 0.82 * strength))
+      }
+
       for (let y = 0; y < height; y += 1) {
         const strength = leftRightDiffs[y] / maxDiff
-        heatCtx.strokeStyle = `rgba(255,84,84,${0.12 + 0.82 * strength})`
-        heatCtx.beginPath()
-        heatCtx.moveTo(0, y + 0.5)
-        heatCtx.lineTo(0, y + 0.5)
-        heatCtx.moveTo(width - 1, y + 0.5)
-        heatCtx.lineTo(width - 1, y + 0.5)
-        heatCtx.stroke()
+        setPixel(0, y, 255, 84, 84, strength)
+        setPixel(width - 1, y, 255, 84, 84, strength)
       }
 
       for (let x = 0; x < width; x += 1) {
         const strength = topBottomDiffs[x] / maxDiff
-        heatCtx.strokeStyle = `rgba(255,191,64,${0.12 + 0.82 * strength})`
-        heatCtx.beginPath()
-        heatCtx.moveTo(x + 0.5, 0)
-        heatCtx.lineTo(x + 0.5, 0)
-        heatCtx.moveTo(x + 0.5, height - 1)
-        heatCtx.lineTo(x + 0.5, height - 1)
-        heatCtx.stroke()
+        setPixel(x, 0, 255, 191, 64, strength)
+        setPixel(x, height - 1, 255, 191, 64, strength)
       }
+
+      heatCtx.putImageData(image, 0, 0)
     }
   }
 
