@@ -14,7 +14,8 @@ src/
 │   ├── BatchPanel.tsx        # Batch grading results table (multi-file upload)
 │   ├── CanvasView.tsx        # Canvas container (thin wrapper)
 │   ├── ControlPanel.tsx      # Left sidebar: upload, repeat config, export settings
-│   └── HeatmapOverlay.tsx    # Seam grade (S/A/B/C/F) + metrics panel
+│   ├── HeatmapOverlay.tsx    # Seam grade (S/A/B/C/F) + metrics panel
+│   └── PreflightPanel.tsx    # Print preflight UI (per-repeat DPI / sharpness / noise / gamut)
 ├── hooks/
 │   ├── useCanvasEngine.ts    # Tile memos, viewport, render loop, PNG/PDF export
 │   └── useGestureHandlers.ts # Pointer/touch/wheel gestures (pan, pinch, wheel zoom)
@@ -24,6 +25,7 @@ src/
 │   ├── colorPalette.ts       # Hue-bucketed HSV k-means color extraction
 │   ├── exportRenderer.ts     # Tiling render shared by PNG and PDF export
 │   ├── imageMetadata.ts      # PNG/JPEG DPI binary parsing
+│   ├── preflight/            # Print preflight core (pure, ported from Sticker_Universe — see rules below)
 │   ├── saveImage.ts          # Download / iOS Web Share save
 │   ├── seamDetector.ts       # Canvas wrapper: pixels -> seamMetrics + heatmap (async)
 │   ├── seamMetrics.ts        # PURE seam math (no DOM) - unit-tested vs Python oracle
@@ -41,6 +43,7 @@ scripts/
 └── ship.ps1                  # One-command commit + push (with confirmation gate)
 tests/
 ├── fixtures/                 # Deterministic PNGs + expected.json (Python-graded)
+├── preflightCore.test.ts     # Preflight core (seeded-noise synthetic fixtures)
 ├── seamMetrics.test.ts       # TS grades must match Python oracle
 └── tilingEngine.test.ts      # Offset/flip math
 ```
@@ -55,6 +58,7 @@ tests/
 - **Rendering:** requestAnimationFrame-driven redraw in useCanvasEngine; preview uses a ≤2048px downscaled bitmap, exports use the full-resolution source.
 - **Seam grading:** `detectSeams()` computes edge pixel diff + Laplacian ratio + SSIM ratio; `combinedRatio = max(lap, ssim)` maps to S/A/B/C/F. Math runs in a Web Worker (`seamWorkerClient.ts`) with a synchronous fallback; thresholds live in `seamMetrics.ts` (keep `batch_seam_test.py` in sync).
 - **DPI workflow:** Binary-parse source image DPI → preserve in export metadata.
+- **Print preflight:** `src/utils/preflight/` is a pure-function port of Sticker_Universe's `src/pages/PrintPreflight/core/` (that repo is the single source of truth; sync algorithm fixes from there, only `presets.ts` diverges — labelKeys map to this project's i18n and SIZE_PRESETS target fabric/wallpaper/wrapping paper). `PreflightPanel` judges ONE repeat unit: target size = export size ÷ tile count, pixels = source tile, upscale ignored.
 - **PDF:** Optional 3mm bleed with trim marks; one-page A4 spec sheet with thumbnail, 3x3 preview, specs, color palette.
 
 ## Repeat Modes (tilingEngine.ts)

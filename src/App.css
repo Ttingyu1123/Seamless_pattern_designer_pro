@@ -795,3 +795,16 @@ button:disabled {
   text-align: center;
   cursor: pointer;
 }
+
+.preflight-metric span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.level-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}

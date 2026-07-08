@@ -4,6 +4,8 @@ import { CanvasView } from './components/CanvasView'
 import { ControlPanel } from './components/ControlPanel'
 import { HeatmapOverlay } from './components/HeatmapOverlay'
 import { BatchPanel } from './components/BatchPanel'
+import { PreflightPanel } from './components/PreflightPanel'
+import { MM_PER_INCH, type SizePreset } from './utils/preflight'
 import { useCanvasEngine } from './hooks/useCanvasEngine'
 import { analyzeBatch, type BatchResult } from './utils/batchAnalyzer'
 import { convertToPixels, readImageMetadata } from './utils/imageMetadata'
@@ -48,6 +50,7 @@ function App() {
 
   const [batchResults, setBatchResults] = useState<BatchResult[] | null>(null)
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null)
+  const [preflightPixels, setPreflightPixels] = useState<ImageData | null>(null)
 
   const repeatBase = useMemo(() => {
     if (!sourceImage) {
@@ -181,9 +184,11 @@ function App() {
       previewCanvas.width = previewW
       previewCanvas.height = previewH
       const previewCtx = previewCanvas.getContext('2d')
+      let previewPixels: ImageData | null = null
       if (previewCtx) {
         previewCtx.imageSmoothingEnabled = true
         previewCtx.drawImage(bitmap, 0, 0, previewW, previewH)
+        previewPixels = previewCtx.getImageData(0, 0, previewW, previewH)
       }
       const preview = await createImageBitmap(previewCanvas)
 
@@ -196,6 +201,7 @@ function App() {
         return preview
       })
       setPreviewScale(scale)
+      setPreflightPixels(previewPixels)
       setCustomBaseWidth(bitmap.width)
       setCustomBaseHeight(bitmap.height)
 
@@ -240,6 +246,12 @@ function App() {
   const handleAutoUpscale = () => {
     setExportUpscale(Math.max(1, suggestedUpscale))
   }
+
+  const handleApplyPreflightPreset = useCallback((preset: SizePreset) => {
+    setExportUnit('cm')
+    setExportWidthInput(Number((preset.widthMm / 10).toFixed(1)))
+    setExportHeightInput(Number((preset.heightMm / 10).toFixed(1)))
+  }, [])
 
   const handleApplyExportPreset = useCallback((preset: ExportPreset) => {
     setExportUnit('cm')
@@ -368,6 +380,19 @@ function App() {
         onPreviewExport={handlePreviewExport}
         onExport={engine.exportPNG}
         onExportPdf={engine.exportPDF}
+        preflightSlot={
+          <PreflightPanel
+            lang={lang}
+            pixels={preflightPixels}
+            trueWidth={sourceImage?.width ?? 0}
+            trueHeight={sourceImage?.height ?? 0}
+            targetWidthMm={(exportWidthPx / Math.max(1, exportDpi)) * MM_PER_INCH}
+            targetHeightMm={(exportHeightPx / Math.max(1, exportDpi)) * MM_PER_INCH}
+            tilesX={exportTilesX}
+            tilesY={autoExportTilesY}
+            onApplySizePreset={handleApplyPreflightPreset}
+          />
+        }
       />
 
       <section className="viewer-area">

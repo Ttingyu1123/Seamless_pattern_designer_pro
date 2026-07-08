@@ -1,4 +1,4 @@
-﻿import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+﻿import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { uiText, type UILang } from '../i18n'
 import type { RepeatBaseSize, RepeatMode } from '../utils/tilingEngine'
 import type { PaletteColor } from '../utils/colorPalette'
@@ -158,6 +158,8 @@ interface ControlPanelProps {
   onPreviewExport: () => void
   onExport: () => void
   onExportPdf: () => void
+  /** Print preflight panel, composed in App so this component stays thin */
+  preflightSlot?: ReactNode
 }
 
 export const ControlPanel = memo(function ControlPanel({
@@ -230,6 +232,7 @@ export const ControlPanel = memo(function ControlPanel({
   onPreviewExport,
   onExport,
   onExportPdf,
+  preflightSlot,
 }: ControlPanelProps) {
   const text = uiText[lang]
 
@@ -779,6 +782,8 @@ export const ControlPanel = memo(function ControlPanel({
 
             {exportQualityRatio > 1 ? <p className="warning-text">{text.qualityWarning(exportQualityRatio)}</p> : null}
             {exportLimitRisk ? <p className="warning-text">{text.limitWarning}</p> : null}
+
+            {preflightSlot}
           </>
         ) : null}
       </section>
